@@ -250,7 +250,7 @@ class HypnogramWidget extends StatelessWidget {
           ),
           series: <CartesianSeries>[
             LineSeries(
-              dataSource: _psgData
+              dataSource: psgData
                   .asMap()
                   .entries
                   .map((e) => ChartData(e.key, e.value))
