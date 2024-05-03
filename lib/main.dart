@@ -1,5 +1,12 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
-import 'package:tflite_flutter/tflite_flutter.dart';
+import 'package:tflite_flutter/tflite_flutter.dart' as tfl;
+import 'package:file_picker/file_picker.dart';
+
+const String modelFile = 'assets/best-mo-walch-no-4018081.tflite';
+const int inputWidth = 15360;
+const int inputHeight = 32;
 
 void main() => runApp(const MyApp());
 
@@ -23,8 +30,41 @@ class SleepClassifier extends StatefulWidget {
 }
 
 class _SleepClassifierState extends State<SleepClassifier> {
-  late Interpreter _interpreter;
+  late tfl.Interpreter _interpreter;
   List<dynamic> _output = []; // Result placeholders
+  List<List<double>> _csvData = [];
+
+  // ... (Your existing functions)
+
+  // Function to pick a CSV file
+  Future<void> _pickCSV() async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['csv', 'out', 'txt'],
+    );
+
+    if (result != null) {
+      String filePath = result.files.single.path!;
+      _loadCSV(filePath);
+    }
+  }
+
+  // Function to load CSV data
+  void _loadCSV(String filePath) async {
+    final csvFile = await File(filePath).readAsString();
+
+    List<List<double>> csvData = csvFile.split('\n').map((String row) {
+      try {
+        return row.split(',').map(double.parse).toList();
+      } catch (e) {
+        return <double>[];
+      }
+    }).toList();
+
+    setState(() {
+      _csvData = csvData;
+    });
+  }
 
   @override
   void initState() {
@@ -40,8 +80,7 @@ class _SleepClassifierState extends State<SleepClassifier> {
 
   // Load the TF Lite model
   _loadModel() async {
-    _interpreter =
-        await Interpreter.fromAsset('assets/sleep_wake_classifier.tflite');
+    _interpreter = await tfl.Interpreter.fromAsset(modelFile);
     print('Model loaded successfully');
   }
 
@@ -64,8 +103,15 @@ class _SleepClassifierState extends State<SleepClassifier> {
           title: const Text('Sleep Wake Classifier'),
         ),
         body: Center(
-            // Design your UI, including buttons to trigger predictions
-            // and display the results from the _outputs variable.
-            ));
+            child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            ElevatedButton(
+              onPressed: _pickCSV,
+              child: const Text('Select CSV File'),
+            ),
+            // ... (Display or use the _csvData)
+          ],
+        )));
   }
 }
