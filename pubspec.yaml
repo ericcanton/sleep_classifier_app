@@ -37,6 +37,7 @@ dependencies:
   cupertino_icons: ^1.0.6
   tflite_flutter: ^0.10.4
   file_picker: ^8.0.3
+  syncfusion_flutter_charts: ^25.1.42+1
 
 dev_dependencies:
   flutter_test:
