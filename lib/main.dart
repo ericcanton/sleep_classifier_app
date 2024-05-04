@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
@@ -35,14 +36,18 @@ class SleepClassifier extends StatefulWidget {
 class _SleepClassifierState extends State<SleepClassifier> {
   late tfl.Interpreter _interpreter;
   List<List<double>> _csvData = [];
-  final List<List<List<double>>> _output = [
-    List.generate(nEpochs, (index) => List.generate(nClasses, (index) => 0.0))
-  ]; // Result placeholders
-  // final List<List<List<List<double>>>>  _modelInput = List.generate(
-  final List<List<List<List<double>>>> _modelInput = [
-    List.generate(inputWidth,
-        (index) => List.generate(inputHeight, (index) => [0.0, 0.0]))
-  ];
+  static List<List<List<double>>> get _zeroModelOutput => [
+        List.generate(
+            nEpochs, (index) => List.generate(nClasses, (index) => 0.0))
+      ]; // Result placeholders
+  final _output = _zeroModelOutput;
+  final _outputBuffer = _zeroModelOutput;
+  final _modelInput = _zeroModelInput;
+
+  static List<List<List<List<double>>>> get _zeroModelInput => [
+        List.generate(inputWidth,
+            (index) => List.generate(inputHeight, (index) => [0.0, 0.0]))
+      ];
 
   // Function to pick a CSV file
   Future<void> _pickCSV() async {
@@ -74,6 +79,9 @@ class _SleepClassifierState extends State<SleepClassifier> {
     setState(() {
       _csvData = csvData;
     });
+
+    _prepareInputData();
+    _predictFromCSVData();
   }
 
   /// Prepare input data
@@ -83,18 +91,20 @@ class _SleepClassifierState extends State<SleepClassifier> {
   /// We "reflect" the 2D data to 3D by
   /// repeating the rows, reversed
   _prepareInputData() {
-    // copy the data into modelInput
-    for (int i = 0; i < inputWidth; i++) {
-      for (int j = 0; j < inputHeight; j++) {
-        if (i >= _csvData.length || j >= _csvData[i].length) {
-          continue;
+    setState(() {
+      // copy the data into modelInput
+      for (int i = 0; i < inputWidth; i++) {
+        for (int j = 0; j < inputHeight; j++) {
+          if (i >= _csvData.length || j >= _csvData[i].length) {
+            continue;
+          }
+          // only one layer, always [0]
+          _modelInput[0][i][j][0] = _csvData[i][j];
+          // "reflect" the array across the y-axis, as in: _csvData[x][y]
+          _modelInput[0][i][j][1] = _csvData[i][_csvData[i].length - j - 1];
         }
-        // only one layer, always [0]
-        _modelInput[0][i][j][0] = _csvData[i][j];
-        // "reflect" the array across the y-axis, as in: _csvData[x][y]
-        _modelInput[0][i][j][1] = _csvData[i][_csvData[i].length - j - 1];
       }
-    }
+    });
   }
 
   @override
@@ -120,10 +130,15 @@ class _SleepClassifierState extends State<SleepClassifier> {
     // Prepare input data (adjust according to your model's requirements)
 
     // Run inference
-    _interpreter.run(input, _output);
+    _interpreter.run(input, _outputBuffer);
 
+    // copy data in set state?
     setState(() {
-      // Update UI with results
+      for (int i = 0; i < nEpochs; i++) {
+        for (int j = 0; j < nClasses; j++) {
+          _output[0][i][j] = _outputBuffer[0][i][j];
+        }
+      }
     });
   }
 
@@ -143,7 +158,7 @@ class _SleepClassifierState extends State<SleepClassifier> {
           children: [
             ElevatedButton(
               onPressed: _pickCSV,
-              child: const Text('Select CSV File'),
+              child: const Text('Select Spectrogram CSV File'),
             ),
             ElevatedButton(
               onPressed: _predictFromCSVData,
@@ -195,8 +210,8 @@ class HeatMapPainter extends CustomPainter {
     final colorScale = 255 / (absMax - absMin);
 
     // Define the size of each rectangle
-    final rectWidth = size.width / _csvData[0].length;
-    final rectHeight = size.height / _csvData.length;
+    final rectWidth = max(size.width / _csvData[0].length, 1.0);
+    final rectHeight = max(size.height / _csvData.length, 1.0);
 
     // Paint the heatmap
     for (int i = 0; i < _csvData.length; i++) {
@@ -222,44 +237,44 @@ class HeatMapPainter extends CustomPainter {
 }
 
 int argmax<X extends Comparable>(List<X> list) {
+  print(list);
   return list.indexWhere((element) =>
       element == list.reduce((a, b) => a.compareTo(b) >= 0 ? a : b));
 }
 
 class HypnogramWidget extends StatelessWidget {
-  final List<double> psgData = []; // Your CSV data
+  late List<double> psgData = []; // Your CSV data
 
   HypnogramWidget({Key? key, required List<List<double>> stageProbabilities})
       : super(key: key) {
     // take argmax to convert probabilities to maximum likelihood class
-    psgData.addAll(stageProbabilities.map((e) => argmax(e).toDouble()));
+    psgData = stageProbabilities.map((e) => argmax(e).toDouble()).toList();
   }
 
   @override
   Widget build(BuildContext context) {
     return Container(
-        height: 30, // specify the height
-        width: 300, // specify the width
+        // height: 30, // specify the height
+        // width: 300, // specify the width
         child: SfCartesianChart(
-          primaryXAxis: NumericAxis(
-              isVisible: false, minimum: 0, maximum: nEpochs.toDouble()),
-          primaryYAxis: NumericAxis(
-            isVisible: false,
-            minimum: -1.5,
-            maximum: 4.5,
-          ),
-          series: <CartesianSeries>[
-            LineSeries(
-              dataSource: psgData
-                  .asMap()
-                  .entries
-                  .map((e) => ChartData(e.key, e.value))
-                  .toList(),
-              xValueMapper: (data, _) => data.x,
-              yValueMapper: (data, _) => data.y,
-            ),
-          ],
-        ));
+      primaryXAxis: NumericAxis(isVisible: false, minimum: 0, maximum: 1),
+      primaryYAxis: NumericAxis(
+        isVisible: false,
+        minimum: -1.5,
+        maximum: 4.5,
+      ),
+      series: <CartesianSeries>[
+        LineSeries(
+          dataSource: psgData
+              .asMap()
+              .entries
+              .map((e) => ChartData(e.key, e.value))
+              .toList(),
+          xValueMapper: (data, _) => data.x / psgData.length,
+          yValueMapper: (data, _) => data.y,
+        ),
+      ],
+    ));
   }
 }
 
