@@ -20,7 +20,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const MaterialApp(
-      title: 'Sleep Wake Classifier',
+      title: "",
       home: SleepClassifier(),
     );
   }
@@ -38,16 +38,40 @@ class _SleepClassifierState extends State<SleepClassifier> {
   List<List<double>> _csvData = [];
   static List<List<List<double>>> get _zeroModelOutput =>
       List.generate(nEpochs * nClasses, (index) => 0.0)
-          .reshape([1, nEpochs, nClasses]) as List<List<List<double>>>;
+          .reshape<double>([1, nEpochs, nClasses]) as List<List<List<double>>>;
 
   static List<List<List<List<double>>>> get _zeroModelInput =>
       List.generate(inputWidth * inputHeight * 2, (index) => 0.0)
-          .reshape([1, nEpochs, nClasses, 2]) as List<List<List<List<double>>>>;
+              .reshape<double>([1, inputWidth, inputHeight, 2])
+          as List<List<List<List<double>>>>;
 
   // Initialize the output and input buffers
   final _output = _zeroModelOutput;
   final _outputBuffer = _zeroModelOutput;
   final _modelInput = _zeroModelInput;
+  static const String _baseTitle = 'Sleep Wake Classifier';
+  String _title = _baseTitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+        appBar: AppBar(
+          title: Text(_title),
+        ),
+        body: Center(
+            child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            ElevatedButton(
+              onPressed: _pickCSV,
+              child: const Text('Select Spectrogram CSV File'),
+            ),
+            const SizedBox(height: 20),
+            _csvDataHeatMap(),
+            _hypnogram()
+          ],
+        )));
+  }
 
   // Function to pick a CSV file
   Future<void> _pickCSV() async {
@@ -57,8 +81,12 @@ class _SleepClassifierState extends State<SleepClassifier> {
     );
 
     if (result != null) {
+      String fileNameShort = result.files.single.name;
       String filePath = result.files.single.path!;
       _loadCSV(filePath);
+      setState(() {
+        _title = '$_baseTitle - $fileNameShort';
+      });
     }
   }
 
@@ -91,20 +119,19 @@ class _SleepClassifierState extends State<SleepClassifier> {
   /// We "reflect" the 2D data to 3D by
   /// repeating the rows, reversed
   _prepareInputData() {
-    setState(() {
-      // copy the data into modelInput
-      for (int i = 0; i < inputWidth; i++) {
-        for (int j = 0; j < inputHeight; j++) {
-          if (i >= _csvData.length || j >= _csvData[i].length) {
-            continue;
-          }
-          // only one layer, always [0]
-          _modelInput[0][i][j][0] = _csvData[i][j];
-          // "reflect" the array across the y-axis, as in: _csvData[x][y]
-          _modelInput[0][i][j][1] = _csvData[i][_csvData[i].length - j - 1];
+    // copy the data into modelInput
+    for (int i = 0; i < inputWidth; i++) {
+      for (int j = 0; j < inputHeight; j++) {
+        if (i >= _csvData.length || j >= _csvData[i].length) {
+          continue;
         }
+        // only one layer, always [0]
+        _modelInput[0][i][j][0] = _csvData[i][j];
+        // "reflect" the array across the y-axis, as in: _csvData[x][y]
+        _modelInput[0][i][j][1] = _csvData[i][_csvData[i].length - j - 1];
       }
-    });
+    }
+    setState(() {});
   }
 
   @override
@@ -127,53 +154,18 @@ class _SleepClassifierState extends State<SleepClassifier> {
 
   // Placeholder for making predictions (will need to update with your model input/output)
   _makePrediction(input) async {
-    // Prepare input data (adjust according to your model's requirements)
-
     // Run inference
-    _interpreter.run(input, _outputBuffer);
+    _interpreter.run(input, _output);
 
-    // copy data in set state?
-    setState(() {
-      for (int i = 0; i < nEpochs; i++) {
-        for (int j = 0; j < nClasses; j++) {
-          _output[0][i][j] = _outputBuffer[0][i][j];
-        }
-      }
-    });
+    setState(() {});
   }
 
   _predictFromCSVData() async {
     await _makePrediction(_modelInput);
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-        appBar: AppBar(
-          title: const Text('Sleep Wake Classifier'),
-        ),
-        body: Center(
-            child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            ElevatedButton(
-              onPressed: _pickCSV,
-              child: const Text('Select Spectrogram CSV File'),
-            ),
-            // ElevatedButton(
-            //   onPressed: _predictFromCSVData,
-            //   child: const Text('Make prediction'),
-            // ),
-            _csvDataHeatMap(),
-            _hypnogram()
-            // ... (Display or use the _csvData)
-          ],
-        )));
-  }
-
   Widget _csvDataHeatMap() {
     return _csvData.isNotEmpty
-        // ? Row(children: [Expanded(child: HeatmapWidget(csvData: _csvData))])
         ? Row(children: [
             Expanded(
                 child: HeatmapWidget(
@@ -183,12 +175,10 @@ class _SleepClassifierState extends State<SleepClassifier> {
                         .map((e) => e.map((e) => e[0]).toList())
                         .toList()))
           ])
-        // ? Text('CSV data loaded with ${_csvData.length} rows')
         : const Text('No data to display');
   }
 
   Widget _hypnogram() {
-    print("hypnogram");
     return _output.isNotEmpty
         ? Expanded(child: HypnogramWidget(stageProbabilities: _output[0]))
         : const Text('No hypnogram to display');
@@ -247,12 +237,12 @@ int argmax<X extends Comparable>(List<X> list) {
 }
 
 class HypnogramWidget extends StatelessWidget {
-  late List<double> psgData = []; // Your CSV data
+  late List<double> _psgData = []; // Your CSV data
 
   HypnogramWidget({Key? key, required List<List<double>> stageProbabilities})
       : super(key: key) {
     // take argmax to convert probabilities to maximum likelihood class
-    psgData = stageProbabilities.map((e) => argmax(e).toDouble()).toList();
+    _psgData = stageProbabilities.map((e) => argmax(e).toDouble()).toList();
   }
 
   @override
@@ -263,16 +253,16 @@ class HypnogramWidget extends StatelessWidget {
       primaryYAxis: NumericAxis(
         isVisible: false,
         minimum: -1.5,
-        maximum: 4.5,
+        maximum: 3.5,
       ),
       series: <CartesianSeries>[
         LineSeries(
-          dataSource: psgData
+          dataSource: _psgData
               .asMap()
               .entries
               .map((e) => ChartData(e.key, e.value))
               .toList(),
-          xValueMapper: (data, _) => data.x / psgData.length,
+          xValueMapper: (data, _) => data.x / _psgData.length,
           yValueMapper: (data, _) => data.y,
         ),
       ],
