@@ -180,7 +180,9 @@ class _SleepClassifierState extends State<SleepClassifier> {
 
   Widget _hypnogram() {
     return _output.isNotEmpty
-        ? Expanded(child: HypnogramWidget(stageProbabilities: _output[0]))
+        ? Row(children: [
+            Expanded(child: HypnogramWidget(stageProbabilities: _output[0]))
+          ])
         : const Text('No hypnogram to display');
   }
 }
@@ -199,13 +201,12 @@ class HeatMapPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     // Define the color scale
     final absMax = _csvData.expand((row) => row).reduce(max);
-
     final absMin = _csvData.expand((row) => row).reduce(min);
     final colorScale = 255 / (absMax - absMin);
 
     // Define the size of each rectangle
-    final rectWidth = max(size.width / _csvData.length, 1.0);
-    final rectHeight = max(size.height / _csvData[0].length, 4.0);
+    final rectWidth = size.width / inputWidth;
+    final rectHeight = max(size.height / _csvData[0].length, 8.0);
 
     // Paint the heatmap
     for (int i = 0; i < _csvData.length; i++) {
@@ -218,7 +219,7 @@ class HeatMapPainter extends CustomPainter {
           (value * colorScale).toInt(),
         );
 
-        final rectLeft = (transposed ? i : j) * rectWidth - (size.width / 2);
+        final rectLeft = (transposed ? i : j) * rectWidth;
         final rectTop = (transposed ? j : i) * rectHeight;
         final rect = Rect.fromLTWH(rectLeft, rectTop, rectWidth, rectHeight);
         final paint = Paint()..color = color;
@@ -247,9 +248,9 @@ class HypnogramWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-        child: SfCartesianChart(
-      primaryXAxis: NumericAxis(isVisible: false, minimum: 0, maximum: 1),
+    return SfCartesianChart(
+      plotAreaBorderWidth: 0.0,
+      primaryXAxis: NumericAxis(isVisible: false, minimum: 0.0, maximum: 1),
       primaryYAxis: NumericAxis(
         isVisible: false,
         minimum: -1.5,
@@ -266,7 +267,7 @@ class HypnogramWidget extends StatelessWidget {
           yValueMapper: (data, _) => data.y,
         ),
       ],
-    ));
+    );
   }
 }
 
