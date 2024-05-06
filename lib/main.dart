@@ -173,8 +173,8 @@ class _SleepClassifierState extends State<SleepClassifier> {
 
   Widget _csvDataHeatMap() {
     return _csvData.isNotEmpty
-        // ? Expanded(child: HeatmapWidget(csvData: _csvData))
-        ? Text('CSV data loaded with ${_csvData.length} rows')
+        ? Row(children: [Expanded(child: HeatmapWidget(csvData: _csvData))])
+        // ? Text('CSV data loaded with ${_csvData.length} rows')
         : const Text('No data to display');
   }
 
@@ -188,8 +188,9 @@ class _SleepClassifierState extends State<SleepClassifier> {
 
 class HeatMapPainter extends CustomPainter {
   final List<List<double>> _csvData;
+  bool transposed = false;
 
-  HeatMapPainter(this._csvData);
+  HeatMapPainter(this._csvData, {required this.transposed});
 
   /// Paint the heatmap
   /// The heatmap is a grid of rectangles, where each rectangle represents a value
@@ -198,20 +199,14 @@ class HeatMapPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     // Define the color scale
-    final absMax = _csvData
-        .expand((row) => row)
-        .reduce((a, b) => a.abs() > b.abs() ? a : b)
-        .abs();
+    final absMax = _csvData.expand((row) => row).reduce(max);
 
-    final absMin = _csvData
-        .expand((row) => row)
-        .reduce((a, b) => a.abs() < b.abs() ? a : b)
-        .abs();
+    final absMin = _csvData.expand((row) => row).reduce(min);
     final colorScale = 255 / (absMax - absMin);
 
     // Define the size of each rectangle
-    final rectWidth = max(size.width / _csvData[0].length, 1.0);
-    final rectHeight = max(size.height / _csvData.length, 1.0);
+    final rectWidth = max(size.width / _csvData.length, 1.0);
+    final rectHeight = max(size.height / _csvData[0].length, 4.0);
 
     // Paint the heatmap
     for (int i = 0; i < _csvData.length; i++) {
@@ -224,8 +219,9 @@ class HeatMapPainter extends CustomPainter {
           (value * colorScale).toInt(),
         );
 
-        final rect =
-            Rect.fromLTWH(j * rectWidth, i * rectHeight, rectWidth, rectHeight);
+        final rectLeft = (transposed ? i : j) * rectWidth - (size.width / 2);
+        final rectTop = (transposed ? j : i) * rectHeight;
+        final rect = Rect.fromLTWH(rectLeft, rectTop, rectWidth, rectHeight);
         final paint = Paint()..color = color;
         canvas.drawRect(rect, paint);
       }
@@ -300,7 +296,7 @@ class _HeatmapWidgetState extends State<HeatmapWidget> {
   @override
   Widget build(BuildContext context) {
     return CustomPaint(
-      painter: HeatMapPainter(widget._csvData),
+      painter: HeatMapPainter(widget._csvData, transposed: true),
     );
   }
 }
