@@ -180,9 +180,10 @@ class _SleepClassifierState extends State<SleepClassifier> {
 
   Widget _hypnogram() {
     return _output.isNotEmpty
-        ? Row(children: [
-            Expanded(child: HypnogramWidget(stageProbabilities: _output[0]))
-          ])
+        ? HypnogramWidget(stageProbabilities: _output[0])
+        // ? Row(children: [
+        //     Expanded(child: HypnogramWidget(stageProbabilities: _output[0]))
+        //   ])
         : const Text('No hypnogram to display');
   }
 }
@@ -250,6 +251,7 @@ class HypnogramWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return SfCartesianChart(
       plotAreaBorderWidth: 0.0,
+      margin: EdgeInsets.all(0.0),
       primaryXAxis: NumericAxis(isVisible: false, minimum: 0.0, maximum: 1),
       primaryYAxis: NumericAxis(
         isVisible: false,
