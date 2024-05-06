@@ -36,18 +36,18 @@ class SleepClassifier extends StatefulWidget {
 class _SleepClassifierState extends State<SleepClassifier> {
   late tfl.Interpreter _interpreter;
   List<List<double>> _csvData = [];
-  static List<List<List<double>>> get _zeroModelOutput => [
-        List.generate(
-            nEpochs, (index) => List.generate(nClasses, (index) => 0.0))
-      ]; // Result placeholders
+  static List<List<List<double>>> get _zeroModelOutput =>
+      List.generate(nEpochs * nClasses, (index) => 0.0)
+          .reshape([1, nEpochs, nClasses]) as List<List<List<double>>>;
+
+  static List<List<List<List<double>>>> get _zeroModelInput =>
+      List.generate(inputWidth * inputHeight * 2, (index) => 0.0)
+          .reshape([1, nEpochs, nClasses, 2]) as List<List<List<List<double>>>>;
+
+  // Initialize the output and input buffers
   final _output = _zeroModelOutput;
   final _outputBuffer = _zeroModelOutput;
   final _modelInput = _zeroModelInput;
-
-  static List<List<List<List<double>>>> get _zeroModelInput => [
-        List.generate(inputWidth,
-            (index) => List.generate(inputHeight, (index) => [0.0, 0.0]))
-      ];
 
   // Function to pick a CSV file
   Future<void> _pickCSV() async {
@@ -160,10 +160,10 @@ class _SleepClassifierState extends State<SleepClassifier> {
               onPressed: _pickCSV,
               child: const Text('Select Spectrogram CSV File'),
             ),
-            ElevatedButton(
-              onPressed: _predictFromCSVData,
-              child: const Text('Make prediction'),
-            ),
+            // ElevatedButton(
+            //   onPressed: _predictFromCSVData,
+            //   child: const Text('Make prediction'),
+            // ),
             _csvDataHeatMap(),
             _hypnogram()
             // ... (Display or use the _csvData)
@@ -173,7 +173,16 @@ class _SleepClassifierState extends State<SleepClassifier> {
 
   Widget _csvDataHeatMap() {
     return _csvData.isNotEmpty
-        ? Row(children: [Expanded(child: HeatmapWidget(csvData: _csvData))])
+        // ? Row(children: [Expanded(child: HeatmapWidget(csvData: _csvData))])
+        ? Row(children: [
+            Expanded(
+                child: HeatmapWidget(
+                    // show the full model input array.
+                    // Remember this has shape (1, N, 32, 2), so we do some reshaping
+                    csvData: _modelInput[0]
+                        .map((e) => e.map((e) => e[0]).toList())
+                        .toList()))
+          ])
         // ? Text('CSV data loaded with ${_csvData.length} rows')
         : const Text('No data to display');
   }
@@ -233,7 +242,6 @@ class HeatMapPainter extends CustomPainter {
 }
 
 int argmax<X extends Comparable>(List<X> list) {
-  print(list);
   return list.indexWhere((element) =>
       element == list.reduce((a, b) => a.compareTo(b) >= 0 ? a : b));
 }
@@ -250,8 +258,6 @@ class HypnogramWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-        // height: 30, // specify the height
-        // width: 300, // specify the width
         child: SfCartesianChart(
       primaryXAxis: NumericAxis(isVisible: false, minimum: 0, maximum: 1),
       primaryYAxis: NumericAxis(
