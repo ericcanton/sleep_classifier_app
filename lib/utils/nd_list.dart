@@ -18,6 +18,32 @@ class NDList<X> {
   final List<X> _list = [];
   final List<int> _shape = [];
 
+  @override
+  String toString() {
+    // pretty print the array
+    if (_shape.isEmpty) {
+      return '[]';
+    }
+    if (_shape.length == 1) {
+      return _list.toString();
+    }
+    if (_shape.length == 2) {
+      return _list
+          .map((e) => e.toString())
+          .join('\n')
+          .replaceAll('[', '')
+          .replaceAll(']', '');
+    }
+    // now we have a (3+)D array, so we need to print each 2D slice
+    final subShape = _shape.sublist(1);
+    final subLength = _product(subShape);
+    final slices = List.generate(
+        _shape[0],
+        (i) => NDList._(
+            _list.sublist(i * subLength, (i + 1) * subLength), subShape));
+    return slices.map((e) => e.toString()).join('\n\n');
+  }
+
   NDList.empty() {
     _shape.add(0);
   }
@@ -100,8 +126,10 @@ class NDList<X> {
       if (_shape.length == 1) {
         return NDList._([_list[index]], [1]);
       }
-      return NDList._(_list.sublist(index * subLength, (index + 1) * subLength),
+      final theSlice = NDList._(
+          _list.sublist(index * subLength, (index + 1) * subLength),
           _shape.sublist(1));
+      return theSlice;
     } else if (index is String) {
       if (index == ':') {
         return this;
@@ -188,11 +216,20 @@ class NDList<X> {
   @override
   bool operator ==(Object other) {
     if (other is NDList) {
-      if (shape != other.shape) {
+      // check if the shape and elements match
+      if (shape.length != other.shape.length) {
+        print("shape length mismatch");
         return false;
+      }
+      for (var i = 0; i < shape.length; i++) {
+        if (shape[i] != other.shape[i]) {
+          print("shape mismatch");
+          return false;
+        }
       }
       for (var i = 0; i < count; i++) {
         if (this[i] != other[i]) {
+          print("element mismatch, $i");
           return false;
         }
       }

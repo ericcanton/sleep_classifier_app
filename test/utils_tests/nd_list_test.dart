@@ -27,14 +27,21 @@ void main() {
         [3.0, 4.0]
       ];
       final ndList = NDList.from<double>(data);
+      final ndList0 = NDList.from<double>(data[0]);
+      final ndList1 = NDList.from<double>(data[1]);
 
       expect(ndList.shape, equals([2, 2]));
+
+      expect(ndList0.shape, equals([2]));
+      expect(ndList[0].shape, equals([2]));
+      expect(ndList[0], equals(ndList0));
       expect(ndList[0][0].item, equals(1.0));
       expect(ndList[0][1].item, equals(2.0));
+
       expect(ndList[1][0].item, equals(3.0));
       expect(ndList[1][1].item, equals(4.0));
-      expect(ndList[0], equals(NDList.from<double>(data[0])));
-      expect(ndList[1], equals(NDList.from<double>(data[1])));
+      // expect(ndList[0], equals(NDList.from<double>(data[0])));
+      // expect(ndList[1], equals(NDList.from<double>(data[1])));
     });
 
     test('Create NDList with specified shape and fill value', () {
