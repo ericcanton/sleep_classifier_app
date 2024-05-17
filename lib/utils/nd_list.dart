@@ -1,3 +1,19 @@
+int getLinearIndex(List<int> shape, List<int> index) {
+  if (shape.length != index.length) {
+    throw ArgumentError('Shape and index must have the same length');
+  }
+
+  int linearIndex = 0;
+  int size = 1;
+
+  for (int i = shape.length - 1; i >= 0; i--) {
+    linearIndex += index[i] * size;
+    size *= shape[i];
+  }
+
+  return linearIndex;
+}
+
 /// Wrapper on multi-dimensional lists to provide easier indexing and slicing.
 /// This class is inspired by NumPy's ndarray.
 ///
@@ -48,6 +64,26 @@ class NDList<X> {
     _shape.addAll(shape);
   }
 
+  static NDList<X> stacked<X>(List<NDList<X>> ndLists, {int axis = 0}) {
+    if (axis != 0) {
+      throw UnimplementedError('Only axis 0 is supported at the moment');
+    }
+    if (ndLists.isEmpty) {
+      return NDList.empty();
+    }
+
+    if (ndLists
+        .skip(1)
+        .any((element) => !ndLists.first[0]._shapeMatches(element[0]))) {
+      throw ArgumentError(
+          'All NDLists passed must have matching shapes except for $axis');
+    }
+
+    final shape = [ndLists.length, ...ndLists.first._shape];
+
+    return NDList._(ndLists.expand((element) => element._list).toList(), shape);
+  }
+
   static NDList<E> from<E>(List multiList) {
     if (multiList.isEmpty) {
       return NDList.empty();
@@ -61,6 +97,7 @@ class NDList<X> {
         throw ArgumentError(
             'Ragged array detected! First ragged index: $raggedElementIndex, which has ${list[raggedElementIndex].length} elements, but the 0th element has ${list[0].length}');
       }
+      // shape.insert(0, list[0].length);
       shape.add(list[0].length);
       list = list.expand((element) => element).toList();
     }
@@ -116,95 +153,180 @@ class NDList<X> {
     return true;
   }
 
+  NDList<Y> map<Y>(Y Function(X) f) {
+    return NDList._(_list.map(f).toList(), _shape);
+  }
+
+  (int, int)? _parseSlice(String slice) {
+    try {
+      if (slice.isEmpty) {
+        return (0, 0);
+      }
+      // ':' => parts == ['', ''] => start = 0, end = _shape[0]
+      // '1:' => parts == ['1', ''] => start = 1, end = _shape[0]
+      // ':2' => parts == ['', '2'] => start = 0, end = 2
+      final parts = slice.split(':');
+      final start = parts[0].isEmpty ? 0 : int.parse(parts[0]);
+      final end = parts[1].isEmpty ? _shape[0] : int.parse(parts[1]);
+      return (start, end);
+    } catch (e) {
+      return null;
+    }
+  }
+
   NDList<X> operator [](index) {
     if (_list.isEmpty) {
       throw ArgumentError('Empty NDList, cannot index.');
     }
     if (index is List) {
-      // recursively apply indexing
-      if (index.length == 1) {
-        return this[index[0]];
-      }
-      return this[index[0]][index.sublist(1)];
+      return _listIndex(index);
     } else if (index is int) {
-      // return the appropriate axis-0 slice
-      if (_shape.length == 1) {
-        return NDList._([_list[index]], [1]);
-      }
-      final returnShape = _shape.sublist(1);
-      final subLength = _product(returnShape);
-      if (index < 0) {
-        // -1 => _shape[0] - 1 (aka last element)
-        // -2 => second last element, etc.
-        index += _shape[0];
-      }
-      final theSlice = NDList._(
-          _list.sublist(index * subLength, (index + 1) * subLength),
-          returnShape);
-      return theSlice;
+      return _intIndex(index);
     } else if (index is String) {
-      if (index == ':') {
-        return this;
-      } else if (index.contains(':')) {
-        final parts = index.split(':');
-        final start = parts[0].isEmpty ? 0 : int.parse(parts[0]);
-        final end = parts[1].isEmpty ? count : int.parse(parts[1]);
-        return slice(start, end);
-      } else {
-        throw ArgumentError('Invalid index');
-      }
+      // wrap with [] to make it a list, see note in _listIndex doctsring
+      return _listIndex([index]);
     } else {
       throw ArgumentError('Invalid index');
     }
+  }
+
+  /// This method is used to index the NDList with a list of valid indices, i.e. ints and formatted slice strings.
+  NDList<X> _listIndex(List index) {
+    if (index.length == 1 && index[0] is int) {
+      return this._intIndex(index[0]);
+    } else if (index.length == 1 && index[0] is String) {}
+    var sliced = this;
+    for (var i = 0; i < index.length; i++) {
+      if (index[i] is String) {
+        try {
+          // is it just an int in string format?
+          // .parse throws if cannot be parsed as an int
+          return this._intIndex(int.parse(index[i]));
+        } catch (e) {}
+        try {
+          // is it a formatted slice string, e.g. '1:2, 3:'?
+          List<String> slicedParts = index[i].split(',');
+          slicedParts.map((e) => e.trim()).toList();
+          return sliced._listIndex([...slicedParts, ...index.sublist(i + 1)]);
+        } catch (e) {}
+
+        final parsed = _parseSlice(index[i]);
+        if (parsed == null) {
+          throw ArgumentError('Invalid slice');
+        }
+        sliced = sliced.slice(parsed.$1, parsed.$2, axis: i);
+      } else if (index[i] is int) {
+        sliced = sliced[index[i]];
+      } else {
+        throw ArgumentError(
+            'Invalid index, "${index[i]}" in position $i is not an int or a string.');
+      }
+    }
+    return sliced;
+  }
+
+  NDList<X> _intIndex(int index) {
+    // return the appropriate axis-0 slice
+    if (_shape.length == 1) {
+      return NDList._([_list[index]], [1]);
+    }
+    final returnShape = _shape.sublist(1);
+    final subLength = _product(returnShape);
+    if (index < 0) {
+      // -1 => _shape[0] - 1 (aka last element)
+      // -2 => second last element, etc.
+      index += _shape[0];
+    }
+    final theSlice = NDList._(
+        _list.sublist(index * subLength, (index + 1) * subLength), returnShape);
+    return theSlice;
   }
 
   operator []=(index, X value) {
-    // uses similar parsing to [] operator to assign elements of _list
-    if (index is List) {
-      this[index[0]][index.sublist(1)] = value;
-    } else if (index is int) {
-      final subLength = _shape[0];
-      for (var i = 0; i < subLength; i++) {
-        _list[index * subLength + i] = value;
-      }
-    } else if (index is String) {
-      if (index == ':') {
-        for (var i = 0; i < count; i++) {
-          _list[i] = value;
-        }
-      } else if (index.contains(':')) {
-        final parts = index.split(':');
-        final start = parts[0].isEmpty ? 0 : int.parse(parts[0]);
-        final end = parts[1].isEmpty ? count : int.parse(parts[1]);
-        for (var i = start; i < end; i++) {
-          _list[i] = value;
-        }
-      } else {
-        throw ArgumentError('Invalid index');
-      }
-    } else {
-      throw ArgumentError('Invalid index');
-    }
+    throw UnimplementedError();
   }
 
-  /// Performs a slice along axis 0. Higher axes would be natural to add, but won't be implemented at this time.
-  NDList<X> slice(int start, int end) {
+  NDList<X> slice(int start, int end, {int axis = 0}) {
     if (start < 0) {
-      start += _shape[0];
+      start += _shape[axis];
     }
     if (end < 0) {
-      end += _shape[0];
+      end += _shape[axis];
     }
     if (end < start) {
-      return this.slice(end, start);
+      return this.slice(end, start, axis: axis);
     }
     if (end == start) {
       return NDList._([], [0]);
     }
-    final shapeStart = _shape[0] * start;
-    final shapeEnd = _shape[0] * end;
-    return NDList._(_list.sublist(shapeStart, shapeEnd),
-        [end - start, ..._shape.sublist(1)]);
+    if (_shape.length == 1) {
+      return NDList._(_list.sublist(start, end), [end - start]);
+    }
+    if (end > _shape[axis]) {
+      throw ArgumentError(
+          'End index $end is greater than the length (${_shape[axis]}) of the axis $axis');
+    }
+
+    if (axis > _shape.length - 1) {
+      throw ArgumentError(
+          'Invalid axis $axis for ${_shape.length}D list with shape $_shape');
+    }
+
+    if (axis == 0) {
+      // we know (_shape.length >= 2) since checked == 1 above
+      return NDList._([
+        ..._list.sublist(start * _product(_shape.sublist(1)),
+            end * _product(_shape.sublist(1)))
+      ], [
+        end - start,
+        ..._shape.sublist(1)
+      ]);
+    }
+
+    // now, build a NDList<NDList<X>>, where each element has the same shape
+    // Then we will use .cement() to get a NDList<X> with the new shape
+
+    // return shape becomes the same as the current shape, but with specified axis length being end - start
+    // final shapeAfterAxis = _shape.sublist(axis + 1);
+    // final sliceLength = end - start;
+    // final returnShape = [...shapeBeforeAxis, sliceLength, ...shapeAfterAxis];
+
+    // then it's very easy to NDList.from<NDList<X>>(list).cement()
+
+    final compoundIndices = [
+      for (var i = 0; i < _shape[0]; i++) [i]
+    ];
+    for (int sliceIndex = 1; sliceIndex < axis; sliceIndex++) {
+      for (int i = 0; i < _shape[sliceIndex]; i++) {
+        for (var j = 0; j < compoundIndices.length; j++) {
+          compoundIndices[j].add(i);
+        }
+      }
+    }
+
+    final subTensors = compoundIndices
+        .map((compoundIndex) => this[compoundIndex].slice(start, end, axis: 0))
+        .toList();
+
+    final shapeBeforeAxis = _shape.sublist(0, axis);
+    return NDList.from<NDList<X>>(subTensors)
+        .reshape(shapeBeforeAxis)
+        .cemented();
+  }
+
+  List<int> _sliceIndices((int, int) sliceStartEndPlus1, int axis) {
+    var start = sliceStartEndPlus1.$1;
+    var end = sliceStartEndPlus1.$2;
+    if (start < 0) {
+      start += _shape[axis];
+    }
+    if (end < 0) {
+      end += _shape[axis];
+    }
+    if (end < start) {
+      return _sliceIndices((end, start), axis);
+    }
+    return [];
   }
 
   NDList<X> reshape(List<int> newShape) {
@@ -233,15 +355,8 @@ class NDList<X> {
       if (!_shapeMatches(other)) {
         return false;
       }
-      for (var i = 0; i < shape.length; i++) {
-        if (shape[i] != other.shape[i]) {
-          print("shape mismatch");
-          return false;
-        }
-      }
       for (var i = 0; i < count; i++) {
         if (this._list[i] != other._list[i]) {
-          print("element mismatch, $i");
           return false;
         }
       }
@@ -320,5 +435,25 @@ extension ArithmeticNDList<X extends num> on NDList<X> {
 
   operator /(NDList<X> other) {
     return this.zipWith(other, ((p0, p1) => (p0 / p1) as X));
+  }
+}
+
+extension MultiLinear<X> on NDList<NDList<X>> {
+  NDList<X> flatten() {
+    return NDList.from<X>(_list.expand((element) => element._list).toList());
+  }
+
+  /// If
+  /// * this `NDList` has `.shape == [a0, .... aM]` and
+  /// * every elment is an `NDList<X>` with fixed shape `[b0, ... bN]`,
+  ///
+  /// then this method returns a new `NDList<X>` with shape `[a0, ... aN, b0, ... bN]`.
+  NDList<X> cemented() {
+    if (_list.isEmpty) {
+      return NDList.empty();
+    }
+    final cementedShape = [..._shape, ..._list[0].shape];
+    final cementedList = _list.expand((element) => element._list).toList();
+    return NDList._(cementedList, cementedShape);
   }
 }
