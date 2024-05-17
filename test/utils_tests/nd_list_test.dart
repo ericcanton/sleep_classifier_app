@@ -1,6 +1,3 @@
-import 'dart:js_util';
-import 'dart:math';
-
 import 'package:test/test.dart';
 import 'package:sleep_classifier_app/utils/nd_list.dart';
 
@@ -27,6 +24,7 @@ void main() {
         expect(ndList[i].item, equals(data[i]));
       }
     });
+
     test('2d Indexing with int', () {
       final data = [
         [1.0, 2.0, 4.0],

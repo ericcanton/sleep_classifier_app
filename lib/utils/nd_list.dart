@@ -101,6 +101,21 @@ class NDList<X> {
 
   List<int> get shape => _shape;
 
+  /// This method checks if the shapes are equal element-wise.
+  ///
+  /// Checking `shape == other.shape` does not work because lists are not equal based on element-wise comparison.
+  bool _shapeMatches(NDList other) {
+    if (shape.length != other.shape.length) {
+      return false;
+    }
+    for (var i = 0; i < shape.length; i++) {
+      if (shape[i] != other.shape[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   NDList<X> operator [](index) {
     if (_list.isEmpty) {
       throw ArgumentError('Empty NDList, cannot index.');
@@ -212,8 +227,7 @@ class NDList<X> {
   bool operator ==(Object other) {
     if (other is NDList) {
       // check if the shape and elements match
-      if (shape.length != other.shape.length) {
-        print("shape length mismatch");
+      if (!_shapeMatches(other)) {
         return false;
       }
       for (var i = 0; i < shape.length; i++) {
@@ -256,7 +270,7 @@ extension NumNDList on NDList {
   }
 
   operator +(NDList other) {
-    if (shape != other.shape) {
+    if (_shapeMatches(other)) {
       throw ArgumentError('Shapes do not match');
     }
     final result = NDList.empty();
@@ -267,7 +281,7 @@ extension NumNDList on NDList {
   }
 
   operator -(NDList other) {
-    if (shape != other.shape) {
+    if (_shapeMatches(other)) {
       throw ArgumentError('Shapes do not match');
     }
     final result = NDList.empty();
@@ -278,7 +292,7 @@ extension NumNDList on NDList {
   }
 
   operator *(NDList other) {
-    if (shape != other.shape) {
+    if (_shapeMatches(other)) {
       throw ArgumentError('Shapes do not match');
     }
     final result = NDList.empty();
@@ -289,7 +303,7 @@ extension NumNDList on NDList {
   }
 
   operator /(NDList other) {
-    if (shape != other.shape) {
+    if (_shapeMatches(other)) {
       throw ArgumentError('Shapes do not match');
     }
     final result = NDList.empty();
