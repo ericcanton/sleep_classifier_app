@@ -10,9 +10,12 @@ void main() {
       ];
       final ndList = NDList.from<double>(data);
       final ndList0 = NDList.from<double>(data[0]);
+      final ndList0Second = NDList.from<double>([1.0, 2.0]);
 
+      // check they equal themselves
       expect(ndList, equals(ndList));
       expect(ndList0, equals(ndList0));
+      expect(ndList0Second, equals(ndList0));
     });
 
     test('1d Indexing with int', () {
