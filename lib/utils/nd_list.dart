@@ -35,12 +35,7 @@ class NDList<X> {
           .replaceAll(']', '');
     }
     // now we have a (3+)D array, so we need to print each 2D slice
-    final subShape = _shape.sublist(1);
-    final subLength = _product(subShape);
-    final slices = List.generate(
-        _shape[0],
-        (i) => NDList._(
-            _list.sublist(i * subLength, (i + 1) * subLength), subShape));
+    final slices = List.generate(_shape[0], (i) => this[i]);
     return slices.map((e) => e.toString()).join('\n\n');
   }
 
@@ -94,11 +89,6 @@ class NDList<X> {
     _shape.addAll(shape);
   }
 
-  NDList.fromList(List<X> list) {
-    _list.addAll(list);
-    _shape.add(list.length);
-  }
-
   static int _product(List<int> list) {
     return list.fold(1, (a, b) => a * b);
   }
@@ -112,23 +102,27 @@ class NDList<X> {
   List<int> get shape => _shape;
 
   NDList<X> operator [](index) {
+    if (_list.isEmpty) {
+      throw ArgumentError('Empty NDList, cannot index.');
+    }
     if (index is List) {
       // recursively apply indexing
       return this[index[0]][index.sublist(1)];
     } else if (index is int) {
-      // based on shape[0] return the appropriate slice
-      final subLength = _shape[0];
+      // return the appropriate axis-0 slice
+      if (_shape.length == 1) {
+        return NDList._([_list[index]], [1]);
+      }
+      final returnShape = _shape.sublist(1);
+      final subLength = _product(returnShape);
       if (index < 0) {
         // -1 => _shape[0] - 1 (aka last element)
         // -2 => second last element, etc.
         index += _shape[0];
       }
-      if (_shape.length == 1) {
-        return NDList._([_list[index]], [1]);
-      }
       final theSlice = NDList._(
           _list.sublist(index * subLength, (index + 1) * subLength),
-          _shape.sublist(1));
+          returnShape);
       return theSlice;
     } else if (index is String) {
       if (index == ':') {
@@ -175,6 +169,7 @@ class NDList<X> {
     }
   }
 
+  /// Performs a slice along axis 0. Higher axes would be natural to add, but won't be implemented at this time.
   NDList<X> slice(int start, int end) {
     if (start < 0) {
       start += _shape[0];
@@ -228,7 +223,7 @@ class NDList<X> {
         }
       }
       for (var i = 0; i < count; i++) {
-        if (this[i] != other[i]) {
+        if (this._list[i] != other._list[i]) {
           print("element mismatch, $i");
           return false;
         }
@@ -243,12 +238,13 @@ class NDList<X> {
 }
 
 extension NumNDList on NDList {
-  static NDList zeros<X extends num>(List<int> shape) {
-    return NDList.filled(shape, 0);
+  static NDList<X> zeros<X extends num>(List<int> shape) {
+    final fillValue = ((X is int) ? 0 : 0.0) as X;
+    return NDList.filled(shape, fillValue);
   }
 
   static NDList zerosLike<X extends num>(NDList other) {
-    return NDList.filled(other.shape, 0);
+    return NumNDList.zeros(other.shape);
   }
 
   static NDList ones<X extends num>(List<int> shape) {
