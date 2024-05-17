@@ -37,7 +37,11 @@ void main() {
       final ndList0 = NDList.from<double>(data[0]);
 
       expect(ndList[0], equals(ndList0));
-      expect(ndList[[0, 0]].item, equals(1.0));
+      for (int j = 0; j < 2; j++) {
+        for (var i = 0; i < 3; i++) {
+          expect(ndList[[j, i]].item, equals(data[j][i]));
+        }
+      }
     });
 
     test('2d Indexing with List<int>', () {
