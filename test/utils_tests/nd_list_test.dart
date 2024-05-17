@@ -292,17 +292,13 @@ void main() {
     });
 
     test('Test .cement() for 1x2s', () {
-      final oneUnit = [
-        [1.0, 2.0]
-      ];
-
       final ndLists = [
-        for (int i = 0; i < 3 * 2; i++) NDList.from<double>(oneUnit)
+        for (int i = 0; i < 3 * 2; i++) NDList.from<double>([1.0, 2.0])
       ];
 
       final ndOfNDs = NDList.from<NDList<double>>(ndLists);
 
-      final cemented = ndOfNDs.reshape([3, 2, 2]).cemented();
+      final cemented = ndOfNDs.reshape([3, 2]).cemented();
 
       expect(cemented.shape, equals([3, 2, 2]));
     });
