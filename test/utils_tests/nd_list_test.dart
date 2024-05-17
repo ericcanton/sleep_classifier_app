@@ -36,6 +36,16 @@ void main() {
       expect(ndList[0], equals(ndList0));
     });
 
+    test('2d Indexing with List<int>', () {
+      final data = [
+        [1.0, 2.0, 4.0],
+        [3.0, 4.0, 16.0]
+      ];
+      final ndList = NDList.from<double>(data);
+
+      expect(ndList[[0, 1]].item, equals(2.0));
+    });
+
     test('.item', () {
       final data = [1.0];
       final ndList = NDList.from<double>(data);
@@ -152,7 +162,7 @@ void main() {
       // expect(sliced[1][1], equals(8.0));
     });
 
-    test('Perform element-wise operations', () {
+    test('Sum', () {
       final data1 = [
         [1.0, 2.0],
         [3.0, 4.0]
@@ -165,19 +175,36 @@ void main() {
       final ndList2 = NDList.from<double>(data2);
 
       final sum = ndList1 + ndList2;
-      final product = ndList1 * ndList2;
 
       expect(sum.shape, equals([2, 2]));
-      expect(sum[0][0], equals(3.0));
-      expect(sum[0][1], equals(5.0));
-      expect(sum[1][0], equals(7.0));
-      expect(sum[1][1], equals(9.0));
 
-      expect(product.shape, equals([2, 2]));
-      expect(product[0][0], equals(2.0));
-      expect(product[0][1], equals(6.0));
-      expect(product[1][0], equals(12.0));
-      expect(product[1][1], equals(20.0));
+      for (var i = 0; i < 2; i++) {
+        for (var j = 0; j < 2; j++) {
+          expect(sum[[i, j]].item, equals(data1[i][j] + data2[i][j]));
+        }
+      }
+    });
+    test('Product', () {
+      final data1 = [
+        [1.0, 2.0],
+        [3.0, 4.0]
+      ];
+      final data2 = [
+        [2.0, 3.0],
+        [4.0, 5.0]
+      ];
+      final ndList1 = NDList.from<double>(data1);
+      final ndList2 = NDList.from<double>(data2);
+
+      final sum = ndList1 * ndList2;
+
+      expect(sum.shape, equals([2, 2]));
+
+      for (var i = 0; i < 2; i++) {
+        for (var j = 0; j < 2; j++) {
+          expect(sum[i][j].item, equals(data1[i][j] * data2[i][j]));
+        }
+      }
     });
   });
 }

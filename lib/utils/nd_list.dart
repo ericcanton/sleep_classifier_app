@@ -122,6 +122,9 @@ class NDList<X> {
     }
     if (index is List) {
       // recursively apply indexing
+      if (index.length == 1) {
+        return this[index[0]];
+      }
       return this[index[0]][index.sublist(1)];
     } else if (index is int) {
       // return the appropriate axis-0 slice
@@ -251,65 +254,71 @@ class NDList<X> {
   int get hashCode => _list.hashCode ^ _shape.hashCode;
 }
 
+/// Provides a number of useful extensions in the typical use case of NDList with numbers. This includes methods like `zeros`, `ones`, and element-wise operations.
+///
+/// In Dart, the `num` abstract class unifies `int` and `double`, so we work with each separately.
 extension NumNDList on NDList {
-  static NDList<X> zeros<X extends num>(List<int> shape) {
-    final fillValue = ((X is int) ? 0 : 0.0) as X;
-    return NDList.filled(shape, fillValue);
+  /// At time of writing, `X extends num` means that `X` is either an `int` or a `double`. Thus, we can just check if `X` is an `int` and return `0` or `0.0` accordingly.
+  static X zero<X extends num>() {
+    return (X is int) ? 0 as X : 0.0 as X;
   }
 
-  static NDList zerosLike<X extends num>(NDList other) {
+  /// Returns appropriate 1 for X's type. See docstring on `.zero<X>()` in this extension.
+  static X one<X extends num>() {
+    return (X is int) ? 1 as X : 1.0 as X;
+  }
+
+  /// Creates a new NDList with the provided shape and filled with zeros of the specified type.
+  ///
+  /// Thus, if you want a `NDList<int>` of shape `[2, 3]` filled with the integer `0`, you would call `NumNDList.zeros<int>([2, 3])`.
+  ///
+  /// If we call with `NumNDList.zeros<double>([2, 3])`, we would get a `NDList<double>` filled with `0.0` instead.
+  static NDList<X> zeros<X extends num>(List<int> shape) {
+    return NDList.filled(shape, NumNDList.zero());
+  }
+
+  /// Creates a new NDList with the same shape as the provided NDList and filled with zeros of the specified type.
+  static NDList<X> zerosLike<X extends num>(NDList other) {
     return NumNDList.zeros(other.shape);
   }
 
-  static NDList ones<X extends num>(List<int> shape) {
-    return NDList.filled(shape, 1);
+  /// Creates a new NDList with the provided shape and filled with ones of the specified type.
+  static NDList<X> ones<X extends num>(List<int> shape) {
+    return NDList.filled(shape, NumNDList.one());
   }
 
-  static NDList onesLike<X extends num>(NDList other) {
-    return NDList.filled(other.shape, 1);
+  /// Creates a new NDList with the same shape as the provided NDList and filled with ones of the specified type.
+  static NDList<X> onesLike<X extends num>(NDList other) {
+    return NumNDList.ones<X>(other.shape);
   }
+}
 
-  operator +(NDList other) {
-    if (_shapeMatches(other)) {
+extension ArithmeticNDList<X extends num> on NDList<X> {
+  NDList<X> zipWith(NDList<X> other, X Function(X, X) f) {
+    if (!_shapeMatches(other)) {
       throw ArgumentError('Shapes do not match');
     }
-    final result = NDList.empty();
+    final result = NumNDList.zerosLike<X>(this);
     for (var i = 0; i < count; i++) {
-      result[i] = this[i] + other[i];
+      result._list[i] = f(_list[i], other._list[i]);
     }
     return result;
   }
 
-  operator -(NDList other) {
-    if (_shapeMatches(other)) {
-      throw ArgumentError('Shapes do not match');
-    }
-    final result = NDList.empty();
-    for (var i = 0; i < count; i++) {
-      result[i] = this[i] - other[i];
-    }
-    return result;
+  /// Element-wise addition of two NDLists.
+  NDList<X> operator +(NDList<X> other) {
+    return this.zipWith(other, ((p0, p1) => (p0 + p1) as X));
   }
 
-  operator *(NDList other) {
-    if (_shapeMatches(other)) {
-      throw ArgumentError('Shapes do not match');
-    }
-    final result = NDList.empty();
-    for (var i = 0; i < count; i++) {
-      result[i] = this[i] * other[i];
-    }
-    return result;
+  operator -(NDList<X> other) {
+    return this.zipWith(other, ((p0, p1) => (p0 - p1) as X));
   }
 
-  operator /(NDList other) {
-    if (_shapeMatches(other)) {
-      throw ArgumentError('Shapes do not match');
-    }
-    final result = NDList.empty();
-    for (var i = 0; i < count; i++) {
-      result[i] = this[i] / other[i];
-    }
-    return result;
+  operator *(NDList<X> other) {
+    return this.zipWith(other, ((p0, p1) => (p0 * p1) as X));
+  }
+
+  operator /(NDList<X> other) {
+    return this.zipWith(other, ((p0, p1) => (p0 / p1) as X));
   }
 }
