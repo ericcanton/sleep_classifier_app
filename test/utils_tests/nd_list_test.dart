@@ -203,10 +203,6 @@ void main() {
     test('Shape of 3D NDList slice', () {
       final testND = NDList.filled([2, 4, 3], 0.0);
 
-      // print(testND);
-
-      // print(testND[['0']]);
-
       final testSlice = testND[[':', '1:3']];
       expect(testSlice.shape, equals([2, 2, 3]));
       final iteratedSlice = testSlice[[':', ':', ':1']];
