@@ -303,7 +303,8 @@ class NDList<X> {
     // as NDList.from<NDList<X>>(list).reshape(...).cement()
 
     final subTensors = _enumeratedSlice(axis)
-        .map((compoundIndex) => this[compoundIndex].slice(start, end, axis: 0))
+        .map((compoundIndex) =>
+            this[compoundIndex].slice(start, end, axis: axis - 1))
         .toList();
 
     final shapeBeforeAxis = _shape.sublist(0, axis);
@@ -313,17 +314,31 @@ class NDList<X> {
   }
 
   List<List<int>> _enumeratedSlice(int axis) {
-    final compoundIndices = [
-      for (var i = 0; i < _shape[0]; i++) [i]
+    // [[0], [1], [2], ...] for each axis
+    // eg shape == [2, 4, 3],
+    // [[0], [1]]
+    // [[0], [1], [2], [3]]
+    // [[0], [1], [2]]
+    final axisEnums = [
+      for (int shapeIndex = 0; shapeIndex < axis; shapeIndex++)
+        [
+          for (int i = 0; i < _shape[shapeIndex]; i++) [i]
+        ]
     ];
-    for (int sliceIndex = 1; sliceIndex < axis; sliceIndex++) {
-      for (int i = 0; i < _shape[sliceIndex]; i++) {
-        for (var j = 0; j < compoundIndices.length; j++) {
-          compoundIndices[j].add(i);
-        }
-      }
-    }
-    return compoundIndices;
+
+    // now take the cartesian product of axisEnums
+    // eg [[0], [1]] x [[0], [1], [2], [3]] x [[0], [1], [2]]
+
+    final enumerated =
+        axisEnums.fold<List<List<int>>>([[]], (previousValue, element) {
+      return [
+        for (var i = 0; i < previousValue.length; i++)
+          for (var j = 0; j < element.length; j++)
+            [...previousValue[i], ...element[j]]
+      ];
+    });
+
+    return enumerated;
   }
 
   NDList<X> reshape(List<int> newShape) {

@@ -209,8 +209,10 @@ void main() {
 
       final testSlice = testND[[':', '1:3']];
       expect(testSlice.shape, equals([2, 2, 3]));
-      // final testSlice2 = testND[[':', '1:3', ':1']];
-      // expect(testSlice2.shape, equals([2, 2, 2]));
+      final iteratedSlice = testSlice[[':', ':', ':1']];
+      expect(iteratedSlice.shape, equals([2, 2, 1]));
+      final testSlice2 = testND[[':2', ':1']];
+      expect(testSlice2.shape, equals([2, 1, 3]));
     });
 
     test('Slicing once along axis 1', () {
