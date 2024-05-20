@@ -12,6 +12,8 @@ void main() {
       final ndList0 = NDList.from<double>(data[0]);
       final ndList0Second = NDList.from<double>([1.0, 2.0]);
 
+      print(ndList);
+
       // check they equal themselves
       expect(ndList, equals(ndList));
       expect(ndList0, equals(ndList0));
@@ -201,9 +203,14 @@ void main() {
     test('Shape of 3D NDList slice', () {
       final testND = NDList.filled([2, 4, 3], 0.0);
 
-      final testSlice = testND[[':', '1:3', ':']];
+      // print(testND);
 
+      // print(testND[['0']]);
+
+      final testSlice = testND[[':', '1:3']];
       expect(testSlice.shape, equals([2, 2, 3]));
+      // final testSlice2 = testND[[':', '1:3', ':1']];
+      // expect(testSlice2.shape, equals([2, 2, 2]));
     });
 
     test('Slicing once along axis 1', () {

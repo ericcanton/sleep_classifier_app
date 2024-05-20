@@ -43,16 +43,9 @@ class NDList<X> {
     if (_shape.length == 1) {
       return _list.toString();
     }
-    if (_shape.length == 2) {
-      return _list
-          .map((e) => e.toString())
-          .join('\n')
-          .replaceAll('[', '')
-          .replaceAll(']', '');
-    }
-    // now we have a (3+)D array, so we need to print each 2D slice
-    final slices = List.generate(_shape[0], (i) => this[i]);
-    return slices.map((e) => e.toString()).join('\n\n');
+    return '[${[
+      for (var i = 0; i < _shape[0]; i++) this[i].toString()
+    ].join('\n ')}]\n';
   }
 
   NDList.empty() {
@@ -209,43 +202,34 @@ class NDList<X> {
     final sliceToEdit = this[index];
   }
 
+  NDList<X> _stringIndex(String index, int axis) {
+    try {
+      // is it just an int in string format?
+      // .parse throws if cannot be parsed as an int
+      return this._intIndex(int.parse(index));
+    } catch (e) {
+      // just move on, it's not an int
+    }
+    final parsed = _parseSlice(index);
+    if (parsed == null) {
+      throw ArgumentError('Invalid slice');
+    }
+    return this.slice(parsed.$1, parsed.$2, axis: axis);
+  }
+
   /// This method is used to index the NDList with a list of valid indices, i.e. ints and formatted slice strings.
   NDList<X> _listIndex(List index) {
     if (index.length == 1 && index[0] is int) {
       return this._intIndex(index[0]);
     } else if (index.length == 1 && index[0] is String) {
-      final parsed = _parseSlice(index[0]);
-      if (parsed == null) {
-        throw ArgumentError('Invalid slice');
-      }
-      return this.slice(parsed.$1, parsed.$2, axis: 0);
+      return this._stringIndex(index[0], 0);
     }
     var sliced = this;
     for (var i = 0; i < index.length; i++) {
       if (index[i] is String) {
-        List<String> csSlices = index[i]
-            .split(',')
-            .map((s) => s.trim())
-            .whereType<String>()
-            .toList();
-        if (csSlices.length > 1) {
-          return sliced._listIndex([...csSlices, ...index.sublist(i + 1)]);
-        }
-        try {
-          // is it just an int in string format?
-          // .parse throws if cannot be parsed as an int
-          return this._intIndex(int.parse(index[i]));
-        } catch (e) {
-          // just move on, it's not an int
-        }
-
-        final parsed = _parseSlice(index[i]);
-        if (parsed == null) {
-          throw ArgumentError('Invalid slice');
-        }
-        sliced = sliced.slice(parsed.$1, parsed.$2, axis: i);
+        sliced = sliced._stringIndex(index[i], i);
       } else if (index[i] is int) {
-        sliced = sliced[index[i]];
+        sliced = sliced._intIndex(index[i]);
       } else {
         throw ArgumentError(
             'Invalid index, "${index[i]}" in position $i is not an int or a string.');
@@ -290,7 +274,8 @@ class NDList<X> {
       return NDList._([], [0]);
     }
     if (_shape.length == 1) {
-      return NDList._(_list.sublist(start, end), [end - start]);
+      final sliceEnd = end > _shape[0] ? _shape[0] : end;
+      return NDList._(_list.sublist(start, sliceEnd), [end - start]);
     }
     if (end > _shape[axis]) {
       throw ArgumentError(
@@ -317,7 +302,7 @@ class NDList<X> {
     // Then we will use .cement() to get a NDList<X> with the new shape
     // as NDList.from<NDList<X>>(list).reshape(...).cement()
 
-    final subTensors = _enumeratedSlice(axis - 1)
+    final subTensors = _enumeratedSlice(axis)
         .map((compoundIndex) => this[compoundIndex].slice(start, end, axis: 0))
         .toList();
 
@@ -466,7 +451,7 @@ extension MultiLinear<X> on NDList<NDList<X>> {
   /// then this method returns a new `NDList<X>` with shape `[a0, ... aN, b0, ... bN]`.
   NDList<X> cemented() {
     if (_list.isEmpty) {
-      return NDList.empty();
+      return NDList<X>.empty();
     }
     final cementedShape = [..._shape, ..._list[0].shape];
     final cementedList = _list.expand((element) => element._list).toList();
