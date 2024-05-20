@@ -190,6 +190,25 @@ class NDList<X> {
     }
   }
 
+  // void operator =(NDList<X> value) {
+
+  //   if (!_shapeMatches(value)) {
+  //     throw ArgumentError('Shapes do not match');
+  //   }
+
+  //   for (var i = 0; i < _list.count; i++) {
+  //     this._list[i] = value._list[i];
+  //   }
+
+  // }
+
+  void operator []=(index, X value) {
+    // this gives a subtensor whose elements can be modified
+    // and are the same objects as in this._list
+    // So, when we edit elements of this sub-tensor we are modifying the original too.
+    final sliceToEdit = this[index];
+  }
+
   /// This method is used to index the NDList with a list of valid indices, i.e. ints and formatted slice strings.
   NDList<X> _listIndex(List index) {
     if (index.length == 1 && index[0] is int) {
@@ -252,10 +271,6 @@ class NDList<X> {
     return theSlice;
   }
 
-  operator []=(index, X value) {
-    throw UnimplementedError();
-  }
-
   NDList<X> slice(int start, int end, {int axis = 0}) {
     if (start < 0) {
       start += _shape[axis];
@@ -295,14 +310,19 @@ class NDList<X> {
 
     // now, build a NDList<NDList<X>>, where each element has the same shape
     // Then we will use .cement() to get a NDList<X> with the new shape
+    // as NDList.from<NDList<X>>(list).reshape(...).cement()
 
-    // return shape becomes the same as the current shape, but with specified axis length being end - start
-    // final shapeAfterAxis = _shape.sublist(axis + 1);
-    // final sliceLength = end - start;
-    // final returnShape = [...shapeBeforeAxis, sliceLength, ...shapeAfterAxis];
+    final subTensors = _enumeratedSlice(axis - 1)
+        .map((compoundIndex) => this[compoundIndex].slice(start, end, axis: 0))
+        .toList();
 
-    // then it's very easy to NDList.from<NDList<X>>(list).cement()
+    final shapeBeforeAxis = _shape.sublist(0, axis);
+    return NDList.from<NDList<X>>(subTensors)
+        .reshape(shapeBeforeAxis)
+        .cemented();
+  }
 
+  List<List<int>> _enumeratedSlice(int axis) {
     final compoundIndices = [
       for (var i = 0; i < _shape[0]; i++) [i]
     ];
@@ -313,30 +333,7 @@ class NDList<X> {
         }
       }
     }
-
-    final subTensors = compoundIndices
-        .map((compoundIndex) => this[compoundIndex].slice(start, end, axis: 0))
-        .toList();
-
-    final shapeBeforeAxis = _shape.sublist(0, axis);
-    return NDList.from<NDList<X>>(subTensors)
-        .reshape(shapeBeforeAxis)
-        .cemented();
-  }
-
-  List<int> _sliceIndices((int, int) sliceStartEndPlus1, int axis) {
-    var start = sliceStartEndPlus1.$1;
-    var end = sliceStartEndPlus1.$2;
-    if (start < 0) {
-      start += _shape[axis];
-    }
-    if (end < 0) {
-      end += _shape[axis];
-    }
-    if (end < start) {
-      return _sliceIndices((end, start), axis);
-    }
-    return [];
+    return compoundIndices;
   }
 
   NDList<X> reshape(List<int> newShape) {
