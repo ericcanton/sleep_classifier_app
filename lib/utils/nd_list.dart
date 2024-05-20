@@ -216,13 +216,9 @@ class NDList<X> {
           // is it just an int in string format?
           // .parse throws if cannot be parsed as an int
           return this._intIndex(int.parse(index[i]));
-        } catch (e) {}
-        try {
-          // is it a formatted slice string, e.g. '1:2, 3:'?
-          List<String> slicedParts = index[i].split(',');
-          slicedParts.map((e) => e.trim()).toList();
-          return sliced._listIndex([...slicedParts, ...index.sublist(i + 1)]);
-        } catch (e) {}
+        } catch (e) {
+          // just move on, it's not an int
+        }
 
         final parsed = _parseSlice(index[i]);
         if (parsed == null) {

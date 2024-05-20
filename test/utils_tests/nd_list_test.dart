@@ -221,21 +221,21 @@ void main() {
         [10.0, 11.0]
       ];
       final ndList = NDList.from<double>(data);
-      final slicedTil2 = ndList.slice(0, 2, axis: 1);
-
       final sliceShape = [4, 2];
 
-      expect(slicedTil2.shape, equals(sliceShape),
-          reason: 'explicit slice has wrong shape');
-      expect(slicedTil2, NDList.from<double>(expectedSliceData),
-          reason: 'explicit slice has wrong data');
-
+      // python-style slice, formatted as a string
       final slicedTil2Py = ndList[[':', ':2']];
-
       expect(slicedTil2Py.shape, equals(sliceShape),
           reason: 'python-style slice has wrong shape');
       expect(slicedTil2Py, NDList.from<double>(expectedSliceData),
           reason: 'python-style slice has wrong data');
+
+      // explicitly calling the .slice method
+      final slicedTil2 = ndList.slice(0, 2, axis: 1);
+      expect(slicedTil2.shape, equals(sliceShape),
+          reason: 'explicit slice has wrong shape');
+      expect(slicedTil2, NDList.from<double>(expectedSliceData),
+          reason: 'explicit slice has wrong data');
     });
 
     test('Sum', () {
