@@ -319,5 +319,20 @@ void main() {
 
       expect(cemented.shape, equals([3, 2, 2]));
     });
+
+    test('Test int indexing. Throw error only if out of bounds', () {
+      final data = [
+        [1.0, 2.0, 4.0],
+        [3.0, 4.0, 16.0]
+      ];
+      final ndList = NDList.from<double>(data);
+      // single int input
+      expect(ndList[0], equals(NDList.from<double>(data[0])));
+      expect(ndList[1], equals(NDList.from<double>(data[1])));
+      expect(() => ndList[2], throwsRangeError);
+      expect(ndList[-1], equals(NDList.from<double>(data[1])));
+      expect(ndList[-2], equals(NDList.from<double>(data[0])));
+      expect(() => ndList[-3], throwsRangeError);
+    });
   });
 }

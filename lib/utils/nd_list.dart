@@ -255,6 +255,11 @@ class NDList<X> {
   }
 
   NDList<X> _intIndex(int index) {
+    // error handling
+    if (index < -_shape[0] || index >= _shape[0]) {
+      throw RangeError(
+          'Index out of bounds: index $index is out of bounds for axis with size ${_shape[0]}');
+    }
     // return the appropriate axis-0 slice
     if (_shape.length == 1) {
       return NDList._([_list[index]], [1]);
