@@ -16,6 +16,7 @@ void main() {
       expect(ndList, equals(ndList));
       expect(ndList0, equals(ndList0));
       expect(ndList0Second, equals(ndList0));
+      expect(ndList0 == ndList, isFalse);
     });
 
     test('1d Indexing with int', () {
@@ -224,8 +225,17 @@ void main() {
 
       final sliceShape = [4, 2];
 
-      expect(slicedTil2.shape, equals(sliceShape));
-      expect(slicedTil2, NDList.from<double>(expectedSliceData));
+      expect(slicedTil2.shape, equals(sliceShape),
+          reason: 'explicit slice has wrong shape');
+      expect(slicedTil2, NDList.from<double>(expectedSliceData),
+          reason: 'explicit slice has wrong data');
+
+      final slicedTil2Py = ndList[[':', ':2']];
+
+      expect(slicedTil2Py.shape, equals(sliceShape),
+          reason: 'python-style slice has wrong shape');
+      expect(slicedTil2Py, NDList.from<double>(expectedSliceData),
+          reason: 'python-style slice has wrong data');
     });
 
     test('Sum', () {

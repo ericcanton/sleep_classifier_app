@@ -194,10 +194,24 @@ class NDList<X> {
   NDList<X> _listIndex(List index) {
     if (index.length == 1 && index[0] is int) {
       return this._intIndex(index[0]);
-    } else if (index.length == 1 && index[0] is String) {}
+    } else if (index.length == 1 && index[0] is String) {
+      final parsed = _parseSlice(index[0]);
+      if (parsed == null) {
+        throw ArgumentError('Invalid slice');
+      }
+      return this.slice(parsed.$1, parsed.$2, axis: 0);
+    }
     var sliced = this;
     for (var i = 0; i < index.length; i++) {
       if (index[i] is String) {
+        List<String> csSlices = index[i]
+            .split(',')
+            .map((s) => s.trim())
+            .whereType<String>()
+            .toList();
+        if (csSlices.length > 1) {
+          return sliced._listIndex([...csSlices, ...index.sublist(i + 1)]);
+        }
         try {
           // is it just an int in string format?
           // .parse throws if cannot be parsed as an int
@@ -338,10 +352,14 @@ class NDList<X> {
     if (positiveDims.length > 1) {
       throw ArgumentError('Only one dimension can be -1');
     }
-    if (count % _product(positiveDims) != 0) {
+    final nSpecified = _product(positiveDims);
+    if (count % nSpecified != 0) {
       throw ArgumentError('New shape must have the same number of elements');
     }
-    return NDList._(_list, newShape);
+
+    final otherAxis = count ~/ nSpecified;
+
+    return NDList._(_list, newShape.map((e) => e < 1 ? otherAxis : e).toList());
   }
 
   NDList<X> flatten() {
