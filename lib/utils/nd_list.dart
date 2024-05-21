@@ -58,23 +58,7 @@ class NDList<X> {
   }
 
   static NDList<X> stacked<X>(List<NDList<X>> ndLists, {int axis = 0}) {
-    if (axis != 0) {
-      throw UnimplementedError('Only axis 0 is supported at the moment');
-    }
-    if (ndLists.isEmpty) {
-      return NDList.empty();
-    }
-
-    if (ndLists
-        .skip(1)
-        .any((element) => !ndLists.first[0]._shapeMatches(element[0]))) {
-      throw ArgumentError(
-          'All NDLists passed must have matching shapes except for $axis');
-    }
-
-    final shape = [ndLists.length, ...ndLists.first._shape];
-
-    return NDList._(ndLists.expand((element) => element._list).toList(), shape);
+    return NDList.from<NDList<X>>(ndLists).cemented();
   }
 
   static NDList<E> from<E>(List multiList) {
