@@ -4,14 +4,59 @@ import 'package:test/test.dart';
 import 'package:sleep_classifier_app/utils/nd_list.dart';
 
 void main() {
-  group('NDList<double> assignment', () {
+  group('NDList []=', () {
     test('Test can assign 1 element of a 1d NDList', () {
       final data = [1.0, 2.0, 3.0, 4.0];
       final ndList = NDList.from<double>(data);
 
-      ndList[0] = NDList.from<double>([5.0]);
+      ndList[0] = 5.0;
+      expect(ndList[0].item!, equals(5.0));
 
-      expect(ndList[0].item, equals(5.0));
+      ndList[1] = 6.0;
+      expect(ndList[1].item!, equals(6.0));
+
+      ndList[-1] = 7.0;
+      expect(ndList[3].item!, equals(7.0));
+    });
+    test('Test can assign a slice of a 1d NDList', () {
+      final data = [1.0, 2.0, 3.0, 4.0];
+      final ndList = NDList.from<double>(data);
+
+      ndList['1:3'] = 5.0;
+      expect(ndList[0].item!, equals(data[0]));
+      expect(ndList[3].item!, equals(data[3]));
+      expect(ndList[1].item!, equals(5.0));
+      expect(ndList[2].item!, equals(5.0));
+    });
+    test('Test can assign an axis-0 element of a 2d NDList', () {
+      final data = [
+        [1.0, 2.0, 4.0],
+        [3.0, 4.0, 16.0]
+      ];
+      final ndList = NDList.from<double>(data);
+
+      final editToBe = NDList.from<double>([5.0, 6.0, 7.0]);
+      ndList[0] = editToBe;
+
+      expect(ndList[0], equals(editToBe));
+    });
+    test('Test can assign an axis-0 slice of a 2d NDList', () {
+      final data = [
+        [0.0, 1.0, 2.0],
+        [3.0, 4.0, 5.0],
+        [6.0, 7.0, 8.0],
+        [9.0, 10.0, 11.0]
+      ];
+
+      final ndList = NDList.from<double>(data);
+      final editSlice = NDList.filled([2, 3], -99.0);
+
+      ndList['1:3'] = editSlice;
+
+      expect(ndList[0], equals(NDList.from<double>(data[0])));
+      expect(ndList[1], equals(editSlice[0]));
+      expect(ndList[2], equals(editSlice[1]));
+      expect(ndList[3], equals(NDList.from<double>(data[3])));
     });
   });
 
@@ -122,7 +167,7 @@ void main() {
 
       for (int i = 0; i < 2; i++) {
         for (var j = 0; j < 3; j++) {
-          expect(ndList[[i, j]].item, equals(data[j][i]));
+          expect(ndList[[i, j]].item, equals(data[i][j]));
         }
       }
     });
