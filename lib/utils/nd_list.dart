@@ -128,8 +128,10 @@ class NDList<X> {
   X? get item => _list.length == 1 ? _list[0] : null;
 
   int get count => _list.length;
+  int get length => _shape.isNotEmpty ? _shape[0] : -1;
 
   List<int> get shape => _shape;
+  int get nDims => _shape.length;
 
   /// This method checks if the shapes are equal element-wise.
   ///

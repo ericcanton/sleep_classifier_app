@@ -12,12 +12,12 @@ void main() {
       final ndList0 = NDList.from<double>(data[0]);
       final ndList0Second = NDList.from<double>([1.0, 2.0]);
 
-      print(ndList);
-
       // check they equal themselves
       expect(ndList, equals(ndList));
       expect(ndList0, equals(ndList0));
       expect(ndList0Second, equals(ndList0));
+
+      // and do not equal others
       expect(ndList0 == ndList, isFalse);
     });
 
@@ -40,11 +40,6 @@ void main() {
       final ndList0 = NDList.from<double>(data[0]);
 
       expect(ndList[0], equals(ndList0));
-      for (int j = 0; j < 2; j++) {
-        for (var i = 0; i < 3; i++) {
-          expect(ndList[[j, i]].item, equals(data[j][i]));
-        }
-      }
     });
 
     test('2d Indexing with List<int>', () {
@@ -54,7 +49,11 @@ void main() {
       ];
       final ndList = NDList.from<double>(data);
 
-      expect(ndList[[0, 1]].item, equals(2.0));
+      for (int i = 0; i < 2; i++) {
+        for (var j = 0; j < 3; j++) {
+          expect(ndList[[i, j]].item, equals(data[j][i]));
+        }
+      }
     });
 
     test('.item', () {
