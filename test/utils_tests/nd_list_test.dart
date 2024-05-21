@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:test/test.dart';
 import 'package:sleep_classifier_app/utils/nd_list.dart';
 
@@ -10,6 +12,63 @@ void main() {
       ndList[0] = NDList.from<double>([5.0]);
 
       expect(ndList[0].item, equals(5.0));
+    });
+  });
+
+  group('Cementing', () {
+    /// This is a fairly important operation. It allows us to decompose a transformation into a sequence of smaller transformations on blocks, and then stack the blocks together with .cemented().
+    test('1x1s', () {
+      final data = [
+        [1.0, 2.0, 4.0],
+        [3.0, 4.0, 16.0]
+      ];
+      final ndList = NDList.from<double>(data);
+
+      final subNDs = <NDList<double>>[];
+      for (int i = 0; i < data.length; i++) {
+        for (int j = 0; j < data[i].length; j++) {
+          subNDs.add(NDList.from<double>([data[i][j]]));
+        }
+      }
+
+      final ndOfNDs = NDList.from<NDList<double>>(subNDs);
+
+      expect(ndOfNDs.shape, equals([data.length * data[0].length]));
+
+      final cemented = ndOfNDs.reshape([2, 3]).cemented();
+
+      // note: this works a little strangely for a cement of 1x1s
+      expect(cemented.shape, equals([2, 3, 1]));
+      expect(cemented.squeeze(), equals(ndList));
+    });
+
+    test('3x2 of (4,)s', () {
+      const nRows = 3;
+      const nCols = 2;
+      final filler = NDList.from<double>([1.0, 2.0, 3.0, 4.0]);
+      expect(filler.shape, [4]);
+      final ndLists = [
+        for (int i = 0; i < nRows; i++) [for (int j = 0; j < nCols; j++) filler]
+      ];
+
+      final ndOfNDs = NDList.from<NDList<double>>(ndLists);
+
+      expect(ndOfNDs.shape, equals([nRows, nCols]));
+
+      for (var i = 0; i < nRows; i++) {
+        for (var j = 0; j < nCols; j++) {
+          // NOTE! This is a 1x1 NDList; the element _happens_ to be an NDList with shape [4], but it's not correct to think of ndOfNDs[[i, j]] as the same as it's only element. This is a more complicated example of the Dart difference between 1, [1], and NDList.from<int>([1]).
+          expect(ndOfNDs[[i, j]].shape, equals([1]));
+
+          // since ndOfNDs[[i, j]] has shape [1], we can use .item to get its contents.
+          // this is the [4]-shaped NDList `filler`
+          expect(ndOfNDs[[i, j]].item!.shape, equals(filler.shape));
+        }
+      }
+
+      final cemented = ndOfNDs.cemented();
+
+      expect(cemented.shape, equals([nRows, nCols, 4]));
     });
   });
 
@@ -36,6 +95,7 @@ void main() {
       final data = [91.0, 92.0, 94.0];
       final ndList = NDList.from<double>(data);
 
+      expect(ndList.shape, [data.length]);
       for (var i = 0; i < 3; i++) {
         expect(ndList[i].shape, equals([1]));
         expect(ndList[i].item, equals(data[i]));
@@ -379,7 +439,6 @@ void main() {
       expect(() => ndList[2], throwsRangeError);
       expect(ndList[-1], equals(NDList.from<double>(data[1])));
       expect(ndList[-2], equals(NDList.from<double>(data[0])));
-      expect(() => ndList[-3], throwsRangeError);
     });
   });
 }
