@@ -2,6 +2,17 @@ import 'package:test/test.dart';
 import 'package:sleep_classifier_app/utils/nd_list.dart';
 
 void main() {
+  group('NDList<double> assignment', () {
+    test('Test can assign 1 element of a 1d NDList', () {
+      final data = [1.0, 2.0, 3.0, 4.0];
+      final ndList = NDList.from<double>(data);
+
+      ndList[0] = NDList.from<double>([5.0]);
+
+      expect(ndList[0].item, equals(5.0));
+    });
+  });
+
   group('NDList<double>', () {
     test('==', () {
       final data = [
@@ -61,6 +72,14 @@ void main() {
       final ndList = NDList.from<double>(data);
 
       expect(ndList.item, equals(1.0));
+
+      final data2 = [
+        [1.0, 2.0],
+        [3.0, 4.0]
+      ];
+      final ndList2 = NDList.from<double>(data2);
+
+      expect(ndList2.item, isNull);
     });
 
     test('Create NDList from List<double>', () {
@@ -74,6 +93,21 @@ void main() {
       expect(ndList[3].item, equals(4.0));
     });
 
+    test('Negative indices (1D)', () {
+      final data = [1.0, 2.0, 3.0, 4.0];
+      final ndList = NDList.from<double>(data);
+
+      // negative indices count from the end and loop
+      expect(ndList[-1].item, equals(4.0));
+      expect(ndList[-2].item, equals(3.0));
+      expect(ndList[-3].item, equals(2.0));
+      expect(ndList[-4].item, equals(1.0));
+      expect(ndList[-5].item, equals(4.0));
+      expect(ndList[-6].item, equals(3.0));
+      expect(ndList[-7].item, equals(2.0));
+      expect(ndList[-8].item, equals(1.0));
+    });
+
     test('Create NDList from nested List<double>', () {
       final data = [
         [1.0, 2.0, 4.0],
@@ -84,15 +118,25 @@ void main() {
       expect(ndList.shape, equals([2, 3]));
 
       // 1d data
+      final length0 = data[0].length;
       final ndList0 = NDList.from<double>(data[0]);
-      expect(ndList0.shape, equals([data[0].length]));
+      expect(ndList0.shape, equals([length0]));
       expect(ndList[0], equals(ndList0));
-      expect(ndList[0][0].item, equals(1.0));
-      expect(ndList[0][1].item, equals(2.0));
+      expect(ndList0[0].item, equals(data[0][0]));
+      expect(ndList0[1].item, equals(data[0][1]));
+      expect(ndList[0][0].item, equals(data[0][0]));
+      expect(ndList[0][1].item, equals(data[0][1]));
+
+      final ndList1 = NDList.from<double>(data[1]);
+      expect(ndList[1], equals(ndList1));
+      expect(ndList1[0].item, equals(data[1][0]));
+      expect(ndList1[1].item, equals(data[1][1]));
+      expect(ndList[1][0].item, equals(data[1][0]));
+      expect(ndList[1][1].item, equals(data[1][1]));
 
       // trivially 2-dim [1, N]
       final ndList0Wrapped = NDList.from<double>([data[0]]);
-      expect(ndList0Wrapped.shape, equals([1, 3]));
+      expect(ndList0Wrapped.shape, equals([1, length0]));
       expect(ndList0Wrapped[0], equals(ndList0));
       expect(ndList0Wrapped[0][0].item, equals(1.0));
       expect(ndList0Wrapped[0][1].item, equals(2.0));
@@ -112,14 +156,13 @@ void main() {
     });
 
     test('zeros', () {
-      final shape = [3, 2];
+      final shape = [1, 2, 3, 4, 5, 6];
       final ndList = NumNDList.zeros<double>(shape);
 
       expect(ndList.shape, equals(shape));
-      for (var i = 0; i < shape[0]; i++) {
-        for (var j = 0; j < shape[1]; j++) {
-          expect(ndList[i][j].item, equals(0.0));
-        }
+      final ndListFlat = ndList.flatten();
+      for (var i = 0; i < ndListFlat.length; i++) {
+        expect(ndListFlat[i].item, equals(0.0));
       }
     });
 

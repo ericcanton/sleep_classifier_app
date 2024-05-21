@@ -197,11 +197,47 @@ class NDList<X> {
 
   // }
 
-  void operator []=(index, X value) {
+  void operator []=(index, value) {
+    // interpret X as a [1] shaped NDList
+    if (value is X) {
+      this[index] = NDList.from<X>([value]);
+      return;
+    }
+    // if we made it this far, then value is not an X.
+    if (value is! NDList<X>) {
+      throw ArgumentError('Invalid value');
+    }
+
     // this gives a subtensor whose elements can be modified
     // and are the same objects as in this._list
     // So, when we edit elements of this sub-tensor we are modifying the original too.
     final sliceToEdit = this[index];
+    final sizeDivisor = _sizeDivisor(sliceToEdit.shape, value.shape);
+    if (sizeDivisor.any((element) => element < 1)) {
+      throw ArgumentError(
+          '[]= error: Shape of indexed subtensor ${sliceToEdit.shape} and RHS ${value.shape} are incompatible. Each RHS shape dimension must evenly divide the LHS.');
+    }
+
+    // now, we can iterate over the elements of the value and assign them to the slice
+    final repeatedValue = NDList.filled(sizeDivisor, value).cemented();
+    for (var i = 0; i < value.count; i++) {
+      sliceToEdit._list[i] = repeatedValue._list[i];
+    }
+  }
+
+  static const int _divisorSizeError = -999;
+
+  static List<int> _sizeDivisor(List<int> shape1, List<int> shape2) {
+    if (shape1.length != shape2.length) {
+      throw ArgumentError('Shapes must have the same length');
+    }
+    // if any dimension is not divisible, record that error
+    return [
+      for (var i = 0; i < shape1.length; i++)
+        (shape1[i] % shape2[i] == 0)
+            ? shape1[i] ~/ shape2[i]
+            : _divisorSizeError
+    ];
   }
 
   NDList<X> _stringIndex(String index, int axis) {
@@ -241,8 +277,16 @@ class NDList<X> {
   }
 
   NDList<X> _intIndex(int index) {
+    if (_shape.isEmpty) {
+      throw ArgumentError('Cannot index an empty NDList');
+    }
+    while (index < 0) {
+      // -1 => _shape[0] - 1 (aka last element)
+      // -2 => second last element, etc.
+      index += _shape[0];
+    }
     // error handling
-    if (index < -_shape[0] || index >= _shape[0]) {
+    if (index >= _shape[0]) {
       throw RangeError(
           'Index out of bounds: index $index is out of bounds for axis with size ${_shape[0]}');
     }
@@ -252,11 +296,6 @@ class NDList<X> {
     }
     final returnShape = _shape.sublist(1);
     final subLength = _product(returnShape);
-    if (index < 0) {
-      // -1 => _shape[0] - 1 (aka last element)
-      // -2 => second last element, etc.
-      index += _shape[0];
-    }
     final theSlice = NDList._(
         _list.sublist(index * subLength, (index + 1) * subLength), returnShape);
     return theSlice;
@@ -461,11 +500,28 @@ extension MultiLinear<X> on NDList<NDList<X>> {
     return NDList.from<X>(_list.expand((element) => element._list).toList());
   }
 
-  /// If
+  /// When the elements are also NDList with the same shape and inner type X, they can form building blocks to a larger NDList<X> by basically "forgetting" the separations, cementing the vectors together into a big tensor.
+  ///
+  /// Suppose:
   /// * this `NDList` has `.shape == [a0, .... aM]` and
   /// * every elment is an `NDList<X>` with fixed shape `[b0, ... bN]`,
   ///
   /// then this method returns a new `NDList<X>` with shape `[a0, ... aN, b0, ... bN]`.
+  ///
+  /// Example to keep in mind: An matrix can be thought of as a grid of 1x1 matrices, but we can just "erase" the division between those 1x1s. More generally, this is basically viewing a matrix as a set of equal-sized submatrices. For 3D tensors, think wooden blocks being cemented together to form a larger block.
+  ///
+  /// Example:
+  /// ```
+  /// [[[1], [2], [3]],
+  ///  [[4], [5], [6]]]
+  /// ```
+  ///
+  /// turns into
+  /// ```
+  /// [[1, 2, 3],
+  ///  [4, 5, 6]]
+  /// ```
+  /// using `.cemented()` followed by `.squeeze()` to remove the trivial dimension, giving shape `[2, 3]` instead of `[2, 3, 1]` that `.cemented()` returns.
   NDList<X> cemented() {
     if (_list.isEmpty) {
       return NDList<X>.empty();
@@ -473,5 +529,16 @@ extension MultiLinear<X> on NDList<NDList<X>> {
     final cementedShape = [..._shape, ..._list[0].shape];
     final cementedList = _list.expand((element) => element._list).toList();
     return NDList._(cementedList, cementedShape);
+  }
+}
+
+extension Squeezing<X> on NDList<X> {
+  NDList<X> squeeze() {
+    if (nDims < 2) {
+      return this;
+    }
+
+    final removed1s = _shape.where((element) => element != 1).toList();
+    return reshape(removed1s);
   }
 }
