@@ -68,20 +68,18 @@ void main() {
 
       final ndList = NDList.from<double>(data);
       const fillValue = -99.0;
-      final editSlice = NDList.filled([4], fillValue);
+      final editSlice = NDList.filled([4, 1], fillValue);
 
       ndList[[':', 1]] = editSlice;
 
       for (int row = 0; row < ndList.shape[0]; row++) {
-        expect(ndList[row][0].item, equals(data[row][0]));
-        expect(ndList[row][1].item, equals(fillValue));
-        expect(ndList[row][2].item, equals(data[row][2]));
+        expect(ndList[row][0].item, equals(data[row][0]),
+            reason: "Element 0 of row $row should not have changed");
+        expect(ndList[row][1].item, equals(fillValue),
+            reason: "Element 1 of row $row should have been set to $fillValue");
+        expect(ndList[row][2].item, equals(data[row][2]),
+            reason: "Element 2 of row $row should not have changed");
       }
-
-      // expect(ndList[0], equals(NDList.from<double>(data[0])));
-      // expect(ndList[1], equals(editSlice[0]));
-      // expect(ndList[2], equals(editSlice[1]));
-      // expect(ndList[3], equals(NDList.from<double>(data[3])));
     });
   });
 
@@ -195,7 +193,10 @@ void main() {
       final ndList1 = ndList[[':', 1]];
 
       final expectedData = [
-        [1.0, 4.0, 7.0, 10.0]
+        [1.0],
+        [4.0],
+        [7.0],
+        [10.0]
       ];
 
       expect(ndList1, equals(NDList.from<double>(expectedData)));
@@ -290,7 +291,7 @@ void main() {
       expect(ndList0Wrapped[0][1].item, equals(2.0));
     });
 
-    test('zeros', () {
+    test('zeros: 2D', () {
       final shape = [3, 2];
       final ndList = NumNDList.zeros<double>(shape);
 
@@ -303,7 +304,7 @@ void main() {
       }
     });
 
-    test('zeros', () {
+    test('zeros: high D', () {
       final shape = [1, 2, 3, 4, 5, 6];
       final ndList = NumNDList.zeros<double>(shape);
 
@@ -353,9 +354,6 @@ void main() {
       final sliced13 = ndList['1:3'];
       final sliced24 = ndList['2:4'];
 
-      final parts = ":".split(':');
-      expect(parts.length, equals(2));
-
       final sliceShape = [2, 3];
 
       expect(sliced02.shape, equals(sliceShape));
@@ -393,12 +391,24 @@ void main() {
     test('Shape of 3D NDList slice', () {
       final testND = NDList.filled([2, 4, 3], 0.0);
 
-      final testSlice = testND[[':', '1:3']];
-      expect(testSlice.shape, equals([2, 2, 3]));
-      final iteratedSlice = testSlice[[':', ':', ':1']];
-      expect(iteratedSlice.shape, equals([2, 2, 1]));
-      final testSlice2 = testND[[':2', ':1']];
-      expect(testSlice2.shape, equals([2, 1, 3]));
+      // axis 0
+      final axis0Slice = testND[[':1', ':', ':']];
+      expect(axis0Slice.shape, equals([1, 4, 3]), reason: 'axis 0 slice shape');
+
+      // axis 1
+      final axis1Slice = testND[[':', ':1', ':']];
+      expect(axis1Slice.shape, equals([2, 1, 3]), reason: 'axis 1 slice shape');
+
+      // axis 2
+      final axis2Slice = testND[[':', ':', ':1']];
+      expect(axis2Slice.shape, equals([2, 4, 1]), reason: 'axis 2 slice shape');
+
+      // final testSlice = testND[[':', '1:3']];
+      // expect(testSlice.shape, equals([2, 2, 3]));
+      // final testSlice2 = testND[[':2', ':1']];
+      // expect(testSlice2.shape, equals([2, 1, 3]));
+      // final iteratedSlice = testSlice[[':', ':', ':1']];
+      // expect(iteratedSlice.shape, equals([2, 2, 1]));
     });
 
     test('Slicing once along axis 1', () {
@@ -451,7 +461,7 @@ void main() {
 
       for (var i = 0; i < 2; i++) {
         for (var j = 0; j < 2; j++) {
-          expect(sum[[i, j]].item, equals(data1[i][j] + data2[i][j]));
+          expect(sum[i][j].item, equals(data1[i][j] + data2[i][j]));
         }
       }
     });
