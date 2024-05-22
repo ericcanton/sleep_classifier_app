@@ -120,18 +120,19 @@ class _SleepClassifierState extends State<SleepClassifier> {
   /// repeating the rows, reversed
   _prepareInputData() {
     // copy the data into modelInput
-    for (int i = 0; i < inputWidth; i++) {
-      for (int j = 0; j < inputHeight; j++) {
-        if (i >= _csvData.length || j >= _csvData[i].length) {
-          continue;
+    setState(() {
+      for (int i = 0; i < inputWidth; i++) {
+        for (int j = 0; j < inputHeight; j++) {
+          if (i >= _csvData.length || j >= _csvData[i].length) {
+            continue;
+          }
+          // only one layer, always [0]
+          _modelInput[0][i][j][0] = _csvData[i][j];
+          // "reflect" the array across the y-axis, as in: _csvData[x][y]
+          _modelInput[0][i][j][1] = _csvData[i][_csvData[i].length - j - 1];
         }
-        // only one layer, always [0]
-        _modelInput[0][i][j][0] = _csvData[i][j];
-        // "reflect" the array across the y-axis, as in: _csvData[x][y]
-        _modelInput[0][i][j][1] = _csvData[i][_csvData[i].length - j - 1];
       }
-    }
-    setState(() {});
+    });
   }
 
   @override
