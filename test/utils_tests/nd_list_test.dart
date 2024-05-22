@@ -58,6 +58,31 @@ void main() {
       expect(ndList[2], equals(editSlice[1]));
       expect(ndList[3], equals(NDList.from<double>(data[3])));
     });
+    test('Test can assign an axis-1 element of a 2d NDList', () {
+      final data = [
+        [0.0, 1.0, 2.0],
+        [3.0, 4.0, 5.0],
+        [6.0, 7.0, 8.0],
+        [9.0, 10.0, 11.0]
+      ];
+
+      final ndList = NDList.from<double>(data);
+      const fillValue = -99.0;
+      final editSlice = NDList.filled([4], fillValue);
+
+      ndList[[':', 1]] = editSlice;
+
+      for (int row = 0; row < ndList.shape[0]; row++) {
+        expect(ndList[row][0].item, equals(data[row][0]));
+        expect(ndList[row][1].item, equals(fillValue));
+        expect(ndList[row][2].item, equals(data[row][2]));
+      }
+
+      // expect(ndList[0], equals(NDList.from<double>(data[0])));
+      // expect(ndList[1], equals(editSlice[0]));
+      // expect(ndList[2], equals(editSlice[1]));
+      // expect(ndList[3], equals(NDList.from<double>(data[3])));
+    });
   });
 
   group('Cementing', () {
@@ -117,7 +142,7 @@ void main() {
     });
   });
 
-  group('NDList<double>', () {
+  group('NDList<double> indexing', () {
     test('==', () {
       final data = [
         [1.0, 2.0],
@@ -147,7 +172,7 @@ void main() {
       }
     });
 
-    test('2d Indexing with int', () {
+    test('2d Indexing with int, axis 0', () {
       final data = [
         [1.0, 2.0, 4.0],
         [3.0, 4.0, 16.0]
@@ -156,6 +181,24 @@ void main() {
       final ndList0 = NDList.from<double>(data[0]);
 
       expect(ndList[0], equals(ndList0));
+    });
+    test('2d Indexing with int, axis 1', () {
+      final data = [
+        [0.0, 1.0, 2.0],
+        [3.0, 4.0, 5.0],
+        [6.0, 7.0, 8.0],
+        [9.0, 10.0, 11.0]
+      ];
+
+      final ndList = NDList.from<double>(data);
+
+      final ndList1 = ndList[[':', 1]];
+
+      final expectedData = [
+        [1.0, 4.0, 7.0, 10.0]
+      ];
+
+      expect(ndList1, equals(NDList.from<double>(expectedData)));
     });
 
     test('2d Indexing with List<int>', () {

@@ -292,6 +292,31 @@ class NDList<X> {
     return (_listIndex, theSlice);
   }
 
+  (List<int>, NDList<X>) _intIndexWithAxis(int index, int axis) {
+    if (axis < 0 || axis >= _shape.length) {
+      throw ArgumentError('Invalid axis $axis for shape $_shape');
+    }
+    if (_shape.isEmpty) {
+      throw ArgumentError('Cannot index an empty NDList');
+    }
+    while (index < 0) {
+      index += _shape[axis];
+    }
+    if (index >= _shape[axis]) {
+      throw RangeError(
+          'Index out of bounds: index $index is out of bounds for axis with size ${_shape[axis]}');
+    }
+    if (_shape.length == 1) {
+      return ([index], NDList._([_list[index]], [1]));
+    }
+    final returnShape = _shape.sublist(0, axis) + _shape.sublist(axis + 1);
+    final subLength = _product(returnShape);
+    final theSlice = NDList._(
+        _list.sublist(index * subLength, (index + 1) * subLength), returnShape);
+    final _listIndex = List.generate(subLength, (i) => index * subLength + i);
+    return (_listIndex, theSlice);
+  }
+
   NDList<X> slice(int start, int end, {int axis = 0}) {
     return _slice(start, end, axis: axis).$2;
   }
