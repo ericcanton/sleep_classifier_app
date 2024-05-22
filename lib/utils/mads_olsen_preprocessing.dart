@@ -33,16 +33,16 @@ import './nd_list.dart';
 ///        x_norm = x_norm[:, 0]
 ///    return x_norm
 
-NDList<double> sliding_median(
-    NDList<double> triaxialAccel, int fs, int windowSize) {
-  // directly taken from MO:
-  // (fs * windowSize + 1) % 2 == 0 ? fs * windowSize + 1 : fs * windowSize;
-  final window = fs * windowSize + 1 - ((fs * windowSize + 1) % 2);
-  final reduceDims = triaxialAccel.shape.length == 1;
-  if (reduceDims) {
-    triaxialAccel = NDList.from<double>([triaxialAccel]);
-  }
-  final xNorm = NumNDList.zerosLike<double>(triaxialAccel);
+// NDList<double> sliding_median(
+//     NDList<double> triaxialAccel, int fs, int windowSize) {
+//   // directly taken from MO:
+//   // (fs * windowSize + 1) % 2 == 0 ? fs * windowSize + 1 : fs * windowSize;
+//   final window = fs * windowSize + 1 - ((fs * windowSize + 1) % 2);
+//   final reduceDims = triaxialAccel.shape.length == 1;
+//   if (reduceDims) {
+//     triaxialAccel = NDList.from<double>([triaxialAccel]);
+//   }
+//   final xNorm = NumNDList.zerosLike<double>(triaxialAccel);
   // for (var idx = 0; idx < triaxialAccel.shape.last; idx++) {
   //   final xMed = NDList<double>.filled(
   //       [triaxialAccel.shape.first], triaxialAccel[idx].median());
@@ -54,5 +54,5 @@ NDList<double> sliding_median(
   //   xMed.where((element) => element.isNaN).forEach((element) => element = 0);
   //   xNorm[idx] = triaxialAccel[idx] - xMed;
   // }
-  return reduceDims ? xNorm[0] : xNorm;
-}
+//   return reduceDims ? xNorm[0] : xNorm;
+// }
