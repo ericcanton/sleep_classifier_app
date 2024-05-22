@@ -180,6 +180,29 @@ void main() {
 
       expect(ndList[0], equals(ndList0));
     });
+    test('2d slice length 1, axis 1', () {
+      // @ericcanton @ftavella start here
+      final data = [
+        [0.0, 1.0, 2.0],
+        [3.0, 4.0, 5.0],
+        [6.0, 7.0, 8.0],
+        [9.0, 10.0, 11.0]
+      ];
+
+      final ndList = NDList.from<double>(data);
+
+      final ndList1 = ndList.slice(0, 1, axis: 1);
+
+      final expectedData = [
+        [1.0],
+        [4.0],
+        [7.0],
+        [10.0]
+      ];
+
+      expect(ndList1, equals(NDList.from<double>(expectedData)));
+    });
+
     test('2d Indexing with int, axis 1', () {
       final data = [
         [0.0, 1.0, 2.0],

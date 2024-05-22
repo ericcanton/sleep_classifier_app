@@ -26,8 +26,9 @@ class NDIndexResult<X> {
   /// Used when processing an index via intermediate steps.
   ///
   /// We got `this` from an index, so it references a subtensor of `parent`. When we do the next step in the index, we are putting that index on the subtensor. This method resolves the indices on the subtensor to the indices on the parent tensor.
-  void resolveIndices(List<int> subtensorIndices) {
-    parentIndices = [for (int i in subtensorIndices) parentIndices[i]];
+  NDIndexResult<X> resolveStep(List<int> subtensorIndices, List<int> newShape) {
+    final newParentIndices = [for (int i in subtensorIndices) parentIndices[i]];
+    return NDIndexResult(parent, newParentIndices, newShape);
   }
 
   NDList<X> evaluate() {
@@ -341,18 +342,12 @@ class NDList<X> {
     }
     // return the appropriate axis-0 slice
     if (priorResult.shape.length == 1) {
-      priorResult.resolveIndices([index]);
-      priorResult.shape = [1];
-      return priorResult;
+      return priorResult.resolveStep([index], [1]);
     }
     final returnShape = priorResult.shape.sublist(1);
     final subLength = _product(returnShape);
-    // final theSlice = NDList._(
-    //     _list.sublist(index * subLength, (index + 1) * subLength), returnShape);
     final listIndex = List.generate(subLength, (i) => index * subLength + i);
-    priorResult.resolveIndices(listIndex);
-    priorResult.shape = returnShape;
-    return priorResult;
+    return priorResult.resolveStep(listIndex, returnShape);
   }
 
   /// This builds on the base case of an axis-0 int index, and allows for indexing on any axis.
@@ -370,27 +365,24 @@ class NDList<X> {
   static NDIndexResult<Y> _slice<Y>(
       NDIndexResult<Y> priorResult, int start, int end,
       {int axis = 0}) {
-    if (start < 0) {
-      start += priorResult.shape[axis];
-    }
-    if (end < 0) {
-      end += priorResult.shape[axis];
-    }
-    if (end < start) {
-      return _slice(priorResult, end, start, axis: axis);
-    }
+    // if (start < 0) {
+    //   start += priorResult.shape[axis];
+    // }
+    // if (end < 0) {
+    //   end += priorResult.shape[axis];
+    // }
+    // if (end < start) {
+    //   return _slice(priorResult, end, start, axis: axis);
+    // }
     if (end == start) {
-      priorResult.resolveIndices([]);
-      priorResult.shape = [];
+      return priorResult.resolveStep([], []);
     }
     if (priorResult.shape.length == 1) {
       final sliceEnd = end > priorResult.shape[0] ? priorResult.shape[0] : end;
       final sliceLength = sliceEnd - start;
       final indices = List.generate(sliceLength, (i) => start + i);
 
-      priorResult.resolveIndices(indices);
-      priorResult.shape = [sliceLength];
-      return priorResult;
+      return priorResult.resolveStep(indices, [sliceLength]);
     }
 
     if (axis > priorResult.shape.length - 1) {
@@ -399,15 +391,18 @@ class NDList<X> {
     }
 
     if (axis == 0) {
-      final sliceStep = _product(priorResult.shape.sublist(1));
-      final sliceEnd = end > priorResult.shape[0] ? priorResult.shape[0] : end;
+      // final singleSliceShape = priorResult.shape.sublist(1);
+      // final sliceStep = _product(singleSliceShape);
+      final sliceEnd =
+          end; // > priorResult.shape[0] ? priorResult.shape[0] : end;
       final sliceLength = sliceEnd - start;
-      final listIndices =
-          List.generate(sliceLength * sliceStep, (i) => start * sliceStep + i);
-      final returnShape = [sliceLength, ...priorResult.shape.sublist(1)];
-      priorResult.resolveIndices(listIndices);
-      priorResult.shape = returnShape;
-      return priorResult;
+      final listIndices = [
+        for (int i = start; i < sliceEnd; i++)
+          ..._intIndex(priorResult, i).parentIndices
+      ];
+
+      final sliceShape = [sliceLength, ...priorResult.shape.sublist(1)];
+      return NDIndexResult(priorResult.parent, listIndices, sliceShape);
     }
 
     final subtensorIndices = _enumerateSubtensors(priorResult.shape, axis);
@@ -421,19 +416,8 @@ class NDList<X> {
 
     final resolvedIndices = indicesAndSubTensors.expand((e) => e.parentIndices);
 
-    priorResult.resolveIndices(resolvedIndices.toList());
-    priorResult.shape = shapeBeforeAxis + indicesAndSubTensors.first.shape;
-
-    return priorResult;
-
-    // final subTensors = indicesAndSubTensors.map((e) => e.$2).toList();
-    // final indicesOnThisList =
-    //     indicesAndSubTensors.expand((e) => e.$1).toSet().toList()..sort();
-
-    // return (
-    //   indicesOnThisList,
-    //   NDList.from<NDList<X>>(subTensors).reshape(shapeBeforeAxis).cemented()
-    // );
+    return priorResult.resolveStep(resolvedIndices.toList(),
+        shapeBeforeAxis + indicesAndSubTensors.first.shape);
   }
 
   /// !! (Remember we index the axes from 0.)
