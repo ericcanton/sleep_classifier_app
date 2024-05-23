@@ -19,6 +19,7 @@ void main() {
       expect(result3.parentIndices, equals([2, 3]));
       expect(result3.parent, equals(ndList));
       expect(result3.shape, equals([2]));
+      expect(result3.evaluate(), equals(NDList.from<double>([3.0, 4.0])));
     });
 
     test('Resolving 3D', () {

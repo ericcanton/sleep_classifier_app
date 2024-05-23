@@ -20,6 +20,9 @@ List<int> range(int count) {
   return List.generate(count, (index) => index);
 }
 
+/// Provides a lazy index result that can be resolved to a concrete NDList using `.evaluate()`.
+///
+/// This lets us quickly and reliably reduce complex indices to simples pieces, and also lets us build the []= algorithm on top of the [] algorithm.
 class NDIndexResult<X> {
   NDList<X> parent;
   List<int> parentIndices;
@@ -286,7 +289,7 @@ class NDList<X> {
 
   /// Returns the expected result from any accepted index, as well as the indices on _list that correspond to its elements.
   NDIndexResult<X> _compoundIndexWithEnumeration(List<int> shape, index) {
-    NDIndexResult<X> priorResult = NDIndexResult(this, range(count), shape);
+    NDIndexResult<X> priorResult = NDIndexResult.from(this);
     if (index is List) {
       return _listIndex<X>(priorResult, index);
     } else if (index is int) {
@@ -365,9 +368,7 @@ class NDList<X> {
   }
 
   NDList<X> slice(int start, int end, {int axis = 0}) {
-    return _slice(NDIndexResult(this, range(count), shape), start, end,
-            axis: axis)
-        .evaluate();
+    return _slice(NDIndexResult.from(this), start, end, axis: axis).evaluate();
   }
 
   static NDIndexResult<Y> _slice<Y>(
