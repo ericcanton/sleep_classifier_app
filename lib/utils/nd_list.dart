@@ -396,7 +396,7 @@ class NDList<X> {
 
     if (axis > priorResult.shape.length - 1) {
       throw ArgumentError(
-          'Invalid axis $axis for ${priorResult.shape.length}D list with shape $priorResult.shape');
+          'Invalid axis $axis for ${priorResult.shape.length}-D list with shape ${priorResult.shape}');
     }
 
     if (axis == 0) {
@@ -410,7 +410,10 @@ class NDList<X> {
           ..._intIndex(priorResult, i).parentIndices
       ];
 
-      final sliceShape = [sliceLength, ...priorResult.shape.sublist(1)];
+      final sliceShape = [
+        if (sliceLength > 1 || priorResult.shape.length == 1) sliceLength,
+        ...priorResult.shape.sublist(1)
+      ];
       return NDIndexResult(priorResult.parent, listIndices, sliceShape);
     }
 
