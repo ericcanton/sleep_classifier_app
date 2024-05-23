@@ -1,5 +1,9 @@
 import 'package:tflite_flutter/tflite_flutter.dart';
 
+List<int> squeezeShape(List<int> shape) {
+  return shape.where((element) => element != 1).toList();
+}
+
 int getLinearIndex(List<int> shape, List<int> index) {
   if (shape.length != index.length) {
     throw ArgumentError('Shape and index must have the same length');
@@ -211,8 +215,8 @@ class NDList<X> {
     // So, when we edit elements of this sub-tensor we are modifying the original too.
     final indicesAndSliceToEdit =
         this._compoundIndexWithEnumeration(shape, index);
-    final sliceToEdit = indicesAndSliceToEdit.evaluate();
     final editIndices = indicesAndSliceToEdit.parentIndices;
+    final sliceToEdit = indicesAndSliceToEdit.evaluate();
     final paddedValueShape =
         _padShape(shape: value.shape, toMatch: sliceToEdit.shape);
     value = value.reshape(paddedValueShape);
@@ -224,7 +228,7 @@ class NDList<X> {
 
     // now, we can iterate over the elements of the value and assign them to the slice
     final repeatedValue = NDList.filled(sizeDivisor, value).cemented();
-    for (var i = 0; i < repeatedValue.count; i++) {
+    for (var i = 0; i < editIndices.length; i++) {
       _list[editIndices[i]] = repeatedValue._list[i];
     }
   }
@@ -341,6 +345,7 @@ class NDList<X> {
     if (priorResult.shape.isEmpty) {
       throw ArgumentError('Cannot index an empty NDList');
     }
+
     while (index < 0) {
       // -1 => priorResult.shape[0] - 1 (aka last element)
       // -2 => second last element, etc.
@@ -373,7 +378,7 @@ class NDList<X> {
 
   static NDIndexResult<Y> _slice<Y>(
       NDIndexResult<Y> priorResult, int start, int end,
-      {int axis = 0}) {
+      {required int axis}) {
     // if (start < 0) {
     //   start += priorResult.shape[axis];
     // }
@@ -386,12 +391,13 @@ class NDList<X> {
     if (end == start) {
       return priorResult.resolveStep([], []);
     }
-    if (priorResult.shape.length == 1) {
+    if (squeezeShape(priorResult.shape).length == 1) {
       final sliceEnd = end > priorResult.shape[0] ? priorResult.shape[0] : end;
       final sliceLength = sliceEnd - start;
       final indices = List.generate(sliceLength, (i) => start + i);
 
-      return priorResult.resolveStep(indices, [sliceLength]);
+      return priorResult.resolveStep(indices,
+          priorResult.shape.map((e) => e == 1 ? 1 : sliceLength).toList());
     }
 
     if (axis > priorResult.shape.length - 1) {
@@ -402,34 +408,40 @@ class NDList<X> {
     if (axis == 0) {
       // final singleSliceShape = priorResult.shape.sublist(1);
       // final sliceStep = _product(singleSliceShape);
-      final sliceEnd =
-          end; // > priorResult.shape[0] ? priorResult.shape[0] : end;
+      final sliceEnd = end > priorResult.shape[0] ? priorResult.shape[0] : end;
       final sliceLength = sliceEnd - start;
       final listIndices = [
         for (int i = start; i < sliceEnd; i++)
           ..._intIndex(priorResult, i).parentIndices
       ];
 
-      final sliceShape = [
-        if (sliceLength > 1 || priorResult.shape.length == 1) sliceLength,
-        ...priorResult.shape.sublist(1)
-      ];
+      final sliceShape = [sliceLength, ...priorResult.shape.sublist(1)];
       return NDIndexResult(priorResult.parent, listIndices, sliceShape);
     }
 
-    final subtensorIndices = _enumerateSubtensors(priorResult.shape, axis);
-    final indicesAndSubTensors = subtensorIndices
-        .map((e) => _listIndex(priorResult, e))
-        .map((subtensorResult) {
-      return _slice(subtensorResult, start, end, axis: axis - 1);
-    }).toList();
+    final axis0Slices = [
+      for (int i = 0; i < priorResult.shape[0]; i++)
+        _slice(_intIndex(priorResult, i), start, end, axis: axis)
+    ];
 
-    final shapeBeforeAxis = priorResult.shape.sublist(0, axis);
-
-    final resolvedIndices = indicesAndSubTensors.expand((e) => e.parentIndices);
+    final resolvedIndices = axis0Slices.expand((e) => e.parentIndices);
 
     return priorResult.resolveStep(resolvedIndices.toList(),
-        shapeBeforeAxis + indicesAndSubTensors.first.shape);
+        [axis0Slices.length, ...axis0Slices.first.shape.sublist(1)]);
+
+    // final subtensorIndices = _enumerateSubtensors(priorResult.shape, axis);
+    // final indicesAndSubTensors = subtensorIndices
+    //     .map((e) => _listIndex(priorResult, e))
+    //     .map((subtensorResult) {
+    //   return _slice(subtensorResult, start, end, axis: axis - 1);
+    // }).toList();
+
+    // final shapeBeforeAxis = priorResult.shape.sublist(0, axis);
+
+    // final resolvedIndices = indicesAndSubTensors.expand((e) => e.parentIndices);
+
+    // return priorResult.resolveStep(resolvedIndices.toList(),
+    //     shapeBeforeAxis + indicesAndSubTensors.first.shape);
   }
 
   /// !! (Remember we index the axes from 0.)
@@ -626,7 +638,6 @@ extension Squeezing<X> on NDList<X> {
       return this;
     }
 
-    final removed1s = _shape.where((element) => element != 1).toList();
-    return reshape(removed1s);
+    return reshape(squeezeShape(_shape));
   }
 }
