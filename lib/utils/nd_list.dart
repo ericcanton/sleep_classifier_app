@@ -16,6 +16,10 @@ int getLinearIndex(List<int> shape, List<int> index) {
   return linearIndex;
 }
 
+List<int> range(int count) {
+  return List.generate(count, (index) => index);
+}
+
 class NDIndexResult<X> {
   NDList<X> parent;
   List<int> parentIndices;
@@ -33,6 +37,10 @@ class NDIndexResult<X> {
 
   NDList<X> evaluate() {
     return NDList._([for (int i in parentIndices) parent._list[i]], shape);
+  }
+
+  static NDIndexResult<Y> from<Y>(NDList<Y> ndList) {
+    return NDIndexResult(ndList, range(ndList.count), ndList.shape);
   }
 }
 
@@ -500,10 +508,6 @@ class NDList<X> {
 
   @override
   int get hashCode => _list.hashCode ^ _shape.hashCode;
-
-  List<int> range(int count) {
-    return List.generate(count, (index) => index);
-  }
 }
 
 /// Provides a number of useful extensions in the typical use case of NDList with numbers. This includes methods like `zeros`, `ones`, and element-wise operations.

@@ -4,6 +4,54 @@ import 'package:test/test.dart';
 import 'package:sleep_classifier_app/utils/nd_list.dart';
 
 void main() {
+  group('NDIndexResult', () {
+    test('Test resolving', () {
+      final data = [1.0, 2.0, 3.0, 4.0];
+      final ndList = NDList.from<double>(data);
+
+      final result = NDIndexResult.from(ndList);
+      final result2 = result.resolveStep([1, 2, 3], [3]);
+      expect(result2.parentIndices, [1, 2, 3]);
+      expect(result2.parent, equals(ndList));
+      expect(result2.shape, equals([3]));
+
+      final result3 = result2.resolveStep([1, 2], [2]);
+      expect(result3.parentIndices, equals([2, 3]));
+      expect(result3.parent, equals(ndList));
+      expect(result3.shape, equals([2]));
+    });
+
+    test('Resolving 3D', () {
+      final ndList = NumNDList.zeros([2, 3, 4]);
+
+      final result = NDIndexResult.from(ndList);
+      // manually set the indices for slice [:, 1]
+      // NOTE! Comments are in here intentionally,
+      //  it helps keep track of the indices
+      final sliceIndex = [
+        // [
+        //  0, 1, 2, 3,
+        4, 5, 6, 7,
+        //  8, 9, 10, 11,
+        // ], [
+        // ]
+        //  12, 13, 14, 15,
+        16, 17, 18, 19
+        //  20, 21, 22, 23,
+      ];
+
+      final result2 = result.resolveStep(sliceIndex, [2, 4]);
+      expect(result2.parentIndices, sliceIndex);
+      expect(result2.parent, equals(ndList));
+      expect(result2.shape, equals([2, 4]));
+
+      final subSlice = [1, 5]; // => [5, 17] aka [:, 1, 1]
+      final result3 = result2.resolveStep(subSlice, [2, 1]);
+      expect(result3.parentIndices, equals([5, 17]));
+      expect(result3.parent, equals(ndList));
+      expect(result3.shape, equals([2, 1]));
+    });
+  });
   group('NDList []=', () {
     test('Test can assign 1 element of a 1d NDList', () {
       final data = [1.0, 2.0, 3.0, 4.0];
@@ -180,6 +228,7 @@ void main() {
 
       expect(ndList[0], equals(ndList0));
     });
+
     test('2d slice length 1, axis 1', () {
       // @ericcanton @ftavella start here
       final data = [
