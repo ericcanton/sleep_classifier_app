@@ -122,11 +122,11 @@ void main() {
       ndList[[':', 1]] = editSlice;
 
       for (int row = 0; row < ndList.shape[0]; row++) {
-        expect(ndList[row][0].item, equals(data[row][0]),
+        expect(ndList[[row, 0]].item, equals(data[row][0]),
             reason: "Element 0 of row $row should not have changed");
-        expect(ndList[row][1].item, equals(fillValue),
+        expect(ndList[[row, 1]].item, equals(fillValue),
             reason: "Element 1 of row $row should have been set to $fillValue");
-        expect(ndList[row][2].item, equals(data[row][2]),
+        expect(ndList[[row, 2]].item, equals(data[row][2]),
             reason: "Element 2 of row $row should not have changed");
       }
     });
@@ -216,6 +216,38 @@ void main() {
       for (var i = 0; i < 3; i++) {
         expect(ndList[i].shape, equals([1]));
         expect(ndList[i].item, equals(data[i]));
+      }
+    });
+
+    test('Shape of axis-j index, j=0,1,2 : 3D', () {
+      final array = NumNDList.zeros<double>([3, 4, 2]);
+
+      // for (var i = 0; i < 3; i++) {
+      //   final slice = array[i];
+      //   expect(slice.shape, equals([1, 4, 2]));
+      // }
+
+      // for (var i = 0; i < 4; i++) {
+      //   final slice = array[[':', i]];
+      //   expect(slice.shape, equals([3, 1, 2]));
+      // }
+      for (var i = 0; i < 4; i++) {
+        // final slice = array[[':', ':', i]];
+        final slice = array.slice(i, i + 1, axis: 2);
+        expect(slice.shape, equals([3, 4, 1]));
+      }
+    });
+    test('Shape of axis-j index, j=0,1 : 2D', () {
+      final array = NumNDList.zeros<double>([3, 4]);
+
+      for (var i = 0; i < 3; i++) {
+        final slice = array[i];
+        expect(slice.shape, equals([1, 4]));
+      }
+
+      for (var i = 0; i < 4; i++) {
+        final slice = array[[':', i]];
+        expect(slice.shape, equals([3, 1]));
       }
     });
 
@@ -469,7 +501,7 @@ void main() {
       expect(axis0Slice.shape, equals([1, 4, 3]), reason: 'axis 0 slice shape');
 
       // axis 1
-      final axis1Slice = testND[[':', ':1', ':']];
+      final axis1Slice = testND[[':', ':1']];
       expect(axis1Slice.shape, equals([2, 1, 3]), reason: 'axis 1 slice shape');
 
       // axis 2
