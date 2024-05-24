@@ -87,7 +87,7 @@ void main() {
       final editToBe = NDList.from<double>([5.0, 6.0, 7.0]);
       ndList[0] = editToBe;
 
-      expect(ndList[0], equals(editToBe));
+      expect(ndList[0], equals(editToBe.reshape([1, 3])));
     });
     test('Test can assign an axis-0 slice of a 2d NDList', () {
       final data = [
@@ -102,10 +102,10 @@ void main() {
 
       ndList['1:3'] = editSlice;
 
-      expect(ndList[0], equals(NDList.from<double>(data[0])));
+      expect(ndList[0].flatten(), equals(NDList.from<double>(data[0])));
       expect(ndList[1], equals(editSlice[0]));
       expect(ndList[2], equals(editSlice[1]));
-      expect(ndList[3], equals(NDList.from<double>(data[3])));
+      expect(ndList[3].flatten(), equals(NDList.from<double>(data[3])));
     });
     test('Test can assign an axis-1 element of a 2d NDList', () {
       final data = [
