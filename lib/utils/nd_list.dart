@@ -1,3 +1,18 @@
+/// How does shape change on indexing?
+///
+/// dim = 1, shape (n, )
+/// arr[i] shape (1, )
+///
+/// dim = 2, shape (n, m)
+/// arr[i] shape (1, m)
+/// arr[:, j] shape (n, 1)
+///
+/// dim = 3, shape (n, m, p)
+/// arr[i] shape (1, m, p)
+/// arr[:, j] shape (n, 1, p)
+/// arr[:, :, k] shape (n, m, 1)
+///
+///
 import 'package:tflite_flutter/tflite_flutter.dart';
 
 List<int> squeezeShape(List<int> shape) {
@@ -360,7 +375,7 @@ class NDList<X> {
     if (priorResult.shape.length == 1) {
       return priorResult.resolveStep([index], [1]);
     }
-    final returnShape = priorResult.shape.sublist(1);
+    final returnShape = [1, ...priorResult.shape.sublist(1)];
     final subLength = _product(returnShape);
     final listIndex = List.generate(subLength, (i) => index * subLength + i);
     return priorResult.resolveStep(listIndex, returnShape);
@@ -391,15 +406,20 @@ class NDList<X> {
     if (end == start) {
       return priorResult.resolveStep([], []);
     }
-    if (squeezeShape(priorResult.shape).length == 1) {
-      final sliceEnd = end > priorResult.shape[0] ? priorResult.shape[0] : end;
-      final sliceLength = sliceEnd - start;
-      final indices = List.generate(sliceLength, (i) => start + i);
 
-      return priorResult.resolveStep(indices,
-          priorResult.shape.map((e) => e == 1 ? 1 : sliceLength).toList());
+    if (axis > 0 && priorResult.shape.contains(1)) {
+      final indexOf1 = priorResult.shape.indexOf(1);
+      final reducedShape = [
+        for (var i in range(priorResult.shape.length)) priorResult.shape[i]
+      ];
+      reducedShape.removeAt(indexOf1);
+      final newAxis = (axis > indexOf1) ? axis - 1 : axis;
+      final newPrior = NDIndexResult(
+          priorResult.parent, priorResult.parentIndices, reducedShape);
+      final reducedSlice = _slice(newPrior, start, end, axis: newAxis);
+      reducedSlice.shape.insert(indexOf1, 1);
+      return reducedSlice;
     }
-
     if (axis > priorResult.shape.length - 1) {
       throw ArgumentError(
           'Invalid axis $axis for ${priorResult.shape.length}-D list with shape ${priorResult.shape}');
@@ -419,15 +439,16 @@ class NDList<X> {
       return NDIndexResult(priorResult.parent, listIndices, sliceShape);
     }
 
-    final axis0Slices = [
-      for (int i = 0; i < priorResult.shape[0]; i++)
-        _slice(_intIndex(priorResult, i), start, end, axis: axis)
+    final axis0 = [
+      for (int i = 0; i < priorResult.shape[0]; i++) _intIndex(priorResult, i)
     ];
+
+    final axis0Slices = axis0.map((e) => _slice(e, start, end, axis: axis));
 
     final resolvedIndices = axis0Slices.expand((e) => e.parentIndices);
 
     return priorResult.resolveStep(resolvedIndices.toList(),
-        [axis0Slices.length, ...axis0Slices.first.shape.sublist(0)]);
+        [axis0Slices.length, ...axis0Slices.first.shape.sublist(1)]);
 
     // final subtensorIndices = _enumerateSubtensors(priorResult.shape, axis);
     // final indicesAndSubTensors = subtensorIndices
