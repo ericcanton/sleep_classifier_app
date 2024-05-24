@@ -427,7 +427,7 @@ class NDList<X> {
     final resolvedIndices = axis0Slices.expand((e) => e.parentIndices);
 
     return priorResult.resolveStep(resolvedIndices.toList(),
-        [axis0Slices.length, ...axis0Slices.first.shape.sublist(1)]);
+        [axis0Slices.length, ...axis0Slices.first.shape.sublist(0)]);
 
     // final subtensorIndices = _enumerateSubtensors(priorResult.shape, axis);
     // final indicesAndSubTensors = subtensorIndices
