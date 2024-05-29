@@ -66,6 +66,10 @@ class _SleepClassifierState extends State<SleepClassifier> {
               onPressed: _pickCSV,
               child: const Text('Select Spectrogram CSV File'),
             ),
+            ElevatedButton(
+              onPressed: _loadDataFromWatch,
+              child: const Text('Read Data from Watch'),
+            ),
             const SizedBox(height: 20),
             _csvDataHeatMap(),
             _hypnogram()
@@ -88,6 +92,24 @@ class _SleepClassifierState extends State<SleepClassifier> {
         _title = '$_baseTitle - $fileNameShort';
       });
     }
+  }
+
+  List<List<double>> _makeSpectrogram(List<List<double>> accelerometerSamples) {
+    // Placeholder for making a spectrogram
+    return accelerometerSamples;
+  }
+
+  void _loadDataFromWatch() {
+    // Placeholder for loading data from watch
+    List<List<double>> accelerometerSamples = [];
+    _getDataFromWatch(accelerometerSamples);
+  }
+
+  void _getDataFromWatch(List<List<double>> accelerometerSamples) {
+    List<List<double>> spectrogram = _makeSpectrogram(accelerometerSamples);
+    setState(() {
+      _csvData = spectrogram;
+    });
   }
 
   // Function to load CSV data
