@@ -119,19 +119,20 @@ class _SleepClassifierState extends State<SleepClassifier> {
   /// We "reflect" the 2D data to 3D by
   /// repeating the rows, reversed
   _prepareInputData() {
-    // copy the data into modelInput
-    for (int i = 0; i < inputWidth; i++) {
-      for (int j = 0; j < inputHeight; j++) {
-        if (i >= _csvData.length || j >= _csvData[i].length) {
-          continue;
+    setState(() {
+      // copy the data into modelInput
+      for (int i = 0; i < inputWidth; i++) {
+        for (int j = 0; j < inputHeight; j++) {
+          if (i >= _csvData.length || j >= _csvData[i].length) {
+            continue;
+          }
+          // only one layer, always [0]
+          _modelInput[0][i][j][0] = _csvData[i][j];
+          // "reflect" the array across the y-axis, as in: _csvData[x][y]
+          _modelInput[0][i][j][1] = _csvData[i][_csvData[i].length - j - 1];
         }
-        // only one layer, always [0]
-        _modelInput[0][i][j][0] = _csvData[i][j];
-        // "reflect" the array across the y-axis, as in: _csvData[x][y]
-        _modelInput[0][i][j][1] = _csvData[i][_csvData[i].length - j - 1];
       }
-    }
-    setState(() {});
+    });
   }
 
   @override
@@ -155,9 +156,16 @@ class _SleepClassifierState extends State<SleepClassifier> {
   // Placeholder for making predictions (will need to update with your model input/output)
   _makePrediction(input) async {
     // Run inference
-    _interpreter.run(input, _output);
+    _interpreter.run(input, _outputBuffer);
 
-    setState(() {});
+    // copy data in set state?
+    setState(() {
+      for (int i = 0; i < nEpochs; i++) {
+        for (int j = 0; j < nClasses; j++) {
+          _output[0][i][j] = _outputBuffer[0][i][j];
+        }
+      }
+    });
   }
 
   _predictFromCSVData() async {
